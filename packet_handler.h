@@ -18,7 +18,8 @@
 /* Defines for configurable header values */
 
 #define WGRPID 0x1000
-#define GRPVER 0x26DEFA00       //seconds since Jan 1, 2000, creation Sept 1,2020      
+#define GRPVER 0x26DEFA00       //seconds since Jan 1, 2000, creation Sept 1,2020 
+#define MAXPKTSZ 1500     
 
 
 /* struct definitions for networkpacket structure */
@@ -61,7 +62,7 @@ struct grp_hdr_t {
         uint8_t grpfl;
         uint16_t wgrpId;
         uint32_t grpVer;
-        uint16_t ntwrkMsgNo;
+        //uint16_t ntwrkMsgNo;          //removed in demo
         uint16_t seqNo;
 };
 
@@ -88,10 +89,10 @@ struct rt_pkt_t {
         struct ip_hdr_t *ip_hdr;
         struct udp_hdr_t *udp_hdr;
         struct ntwrkmsg_hdr_t *ntwrkmsg_hdr;
-        struct grp_hdr_t *grp_dhr;
-        struct pyld_hdr_t *pylhdr;
+        struct grp_hdr_t *grp_hdr;
+        struct pyld_hdr_t *pyl_hdr;
         struct extntwrkmsg_hdr_t *extntwrkmsg_hdr;
-        struct dtstmsg_t *dtstmsg_t;
+        struct dtstmsg_t *dtstmsg;
         uint32_t len;
 };
 
@@ -138,12 +139,12 @@ enum varID_t {
 int createpkt(struct rt_pkt_t* pkt, int msgcnt);
 
 /* clears the paket and frees the memory */
-int destroypkt(struct rt_pkt_t*pkt);
+void destroypkt(struct rt_pkt_t*pkt);
 
 /* resets a packet, clears the buffer, sets the pointers according to msgcnt,
 inits paket headers */
 void resetpkt(struct rt_pkt_t* pkt, int msgcnt);
 
-/* sets all standard header values with do not change during the program
+/* sets all standard header values which do not change during the program
 execution */
 void Initpkthdrs(struct rt_pkt_t* pkt);
