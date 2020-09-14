@@ -66,7 +66,7 @@ int wrt_axsinfo2shm(struct axsnfo_t* axsnfo, struct mk_maininput* mk_mainin)
         default:
                 return 1;       //fail
         }
-        return 0;       //succed
+        return 0;       //succeded
 }
 
 
@@ -90,7 +90,7 @@ int rd_shm2cntlinfo(struct mk_mainoutput* mk_mainout, struct cntrlnfo_t* cntrlnf
         cntrlnfo->machinestatus = mk_mainout->machinestatus;
         cntrlnfo->estopstatus = mk_mainout->estopstatus;
 
-        return 0;       //succed
+        return 0;       //succeded
 }
 
 
