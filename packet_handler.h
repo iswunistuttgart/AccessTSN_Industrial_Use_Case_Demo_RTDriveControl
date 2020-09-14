@@ -12,6 +12,9 @@
  * variables. The variable-ID is defined in this document.
  */
 
+#ifndef _PACKETHANDLER_H_
+#define _PACKETHANDLER_H_
+
 #include <stdint.h>
 #include <string.h>
 
@@ -148,3 +151,5 @@ void resetpkt(struct rt_pkt_t* pkt, int msgcnt);
 /* sets all standard header values which do not change during the program
 execution */
 void Initpkthdrs(struct rt_pkt_t* pkt);
+
+#endif /* _PACKETHANDLER_H_ */
