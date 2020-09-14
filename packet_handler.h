@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "datastructs.h"
 
 /* Defines for configurable header values */
 
@@ -151,5 +152,8 @@ void resetpkt(struct rt_pkt_t* pkt, int msgcnt);
 /* sets all standard header values which do not change during the program
 execution */
 void Initpkthdrs(struct rt_pkt_t* pkt);
+
+/* fill packet with information from control */
+void fillpkt(struct rt_pk_t* pkt, struct cntrlnfo_t* cntrlnfo);
 
 #endif /* _PACKETHANDLER_H_ */
