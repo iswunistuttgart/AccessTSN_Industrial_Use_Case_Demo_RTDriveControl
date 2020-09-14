@@ -4,7 +4,7 @@
 # Author: Philipp Neher <philipp.neher@isw.uni-stuttgart.de>
 #
 
-INC = -I.
+INC = -I. -I./demoapps_common
 CC=gcc
 CFLAGS=$(INC) -g
 
@@ -13,7 +13,7 @@ LDIR=../lib
 
 LIBS=-lrt
 
-_OBJ = demo_tsnsender.o packet_handler.o
+_OBJ = demo_tsnsender.o packet_handler.o axisshm_handler.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.c 
@@ -21,10 +21,10 @@ $(ODIR)/%.o: %.c
 
 all: demo_tsnsender
 
-demo_tsnsender: obj/demo_tsnsender.o obj/packet_handler.o
+demo_tsnsender: obj/demo_tsnsender.o obj/packet_handler.o obj/axisshm_handler.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ demo_tsnsender
+	rm -f $(ODIR)/*.o *~ core $(INC)/*~ demo_tsnsender
