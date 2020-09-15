@@ -211,7 +211,14 @@ int dbl2nint64(double val, int64_t *res);
 
 /* converts int64 to double by changing the nano unit to units
  * e.g. multiplying by 10^-9, keeping the sign */
-double nint642dbl( int64_t val);
+double nint642dbl(int64_t val);
+
+/* fills the msghdr structure with the necessary values to sned the packet */
+void fillmsghdr(struct msghdr *msg_hdr, uint64_t txtime, clockid_t clkid);
+
+/* sends the packet with the specified txtime and other values */
+int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr);
+
 
 /* ##### PacketStore ###### */
 /* Holds and manages pointers to allocated packets to manage memory */
