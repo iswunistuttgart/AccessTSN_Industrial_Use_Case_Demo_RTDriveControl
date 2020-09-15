@@ -144,3 +144,90 @@ double nint642dbl(int64_t val)
 {
         return (double)(val*1e-9);
 }
+
+
+/* ##### PacketStore ##### */
+
+int initpktstrg(struct pktstore_t *pktstore, uint32_t size)
+{
+        if(NULL == pktstore)
+                return 1;       //fail
+        int i = 0;
+        int ok;
+        struct rt_pkt_t *pkt;
+        pktstore->size = size;
+        pktstore->pktstrelmt = (struct pktstrelmt_t*) calloc(size,sizeof(struct pktstrelmt_t));
+        if (NULL == pktstore->pktstrelmt){
+                pktstore->size = 0;
+                return 1;       //fail
+        }
+        while(i < pktstore->size) {
+                pkt = NULL;
+                ok = createpkt(pkt);
+                if( ok != 0){
+                        pktstore->size = i;
+                        return 1;       //fail
+                }
+                pktstore->pktstrelmt[i].pkt = pkt;
+                pktstore->pktstrelmt[i].used = false;
+                i++;
+        }
+
+        return 0;
+}
+
+int destroypktstrg(struct pktstore_t  *pktstore)
+{
+        if(NULL == pktstore)
+                return 1;       //fail
+
+        int i = 0;
+        while(i < pktstore->size) {
+                destroypkt(pktstore->pktstrelmt[i].pkt);
+                i++;
+        }
+        pktstore->size = 0;
+        free(pktstore->pktstrelmt);
+        pktstore->pktstrelmt = NULL;
+        return 0;
+}
+
+int getfreepkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt)
+{
+        if(NULL == pktstore)
+                return 1;       //fail
+        pkt = NULL;
+        int i = 0;
+        while(i < pktstore->size) {
+                if(pktstore->pktstrelmt[i].used == false){
+                        pkt = pktstore->pktstrelmt[i].pkt;
+                        pkt = pktstore->pktstrelmt[i].used = true;
+                        i = pktstore->size;
+                } else {
+                        i++;
+                }
+                
+        }
+        if(NULL == pkt)
+                return 1;       //fail
+        return 0;       //succeded
+}
+
+int retusedpkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt)
+{
+        if((NULL == pktstore) || (NULL == pkt))
+                return 1;       //fail
+        int i = 0;
+        while(i < pktstore->size) {
+                if(pktstore->pktstrelmt[i].pkt == pkt){
+                        pktstore->pktstrelmt[i].used = false;
+                        i = pktstore->size;
+                        pkt = NULL;
+                } else {
+                        i++;
+                }
+        }
+        if(NULL != pkt)
+                return 1;       //fail
+        return 1;       //succeded
+}

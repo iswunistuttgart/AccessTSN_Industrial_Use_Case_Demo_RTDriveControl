@@ -137,7 +137,7 @@ struct rt_pkt_t {
         uint32_t len;
 };
 
-/* Enum for Type of the DateSetMessage */
+/* Enum for Type of the DataSetMessage */
 enum msgtyp_t {
         CNTRL,
         AXS,
@@ -184,6 +184,8 @@ enum varID_t {
 };
 */
 
+
+
 /* allocates a new packet and buffer  */
 int createpkt(struct rt_pkt_t* pkt);
 
@@ -210,5 +212,36 @@ int dbl2nint64(double val, int64_t *res);
 /* converts int64 to double by changing the nano unit to units
  * e.g. multiplying by 10^-9, keeping the sign */
 double nint642dbl( int64_t val);
+
+/* ##### PacketStore ###### */
+/* Holds and manages pointers to allocated packets to manage memory */
+
+/* Packetstorelement, has pointer to packet as well as flag if used or not */
+struct pktstrelmt_t {
+        struct rt_pkt_t* pkt;
+        bool used;
+};
+
+/* Packetstorage */
+struct pktstore_t {
+        struct pktstrelmt_t* pktstrelmt;
+        uint32_t size;
+};
+
+/* allocates necaessary memory for Packetstorage, elements and packets */
+int initpktstrg(struct pktstore_t *pktstore, uint32_t size);
+
+/* frees all packets and frees memory from packetstoreage, regardless if packets
+ * are used */
+int destroypktstrg(struct pktstore_t  *pktstore);
+
+/* gets an unused pkt from packetstore and marks it as used */
+int getfreepkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt);
+
+/* returns used pkt to packetsore and marks it as free */
+int retusedpkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt);
+
+/* ###### END PacketStore ##### */
+
 
 #endif /* _PACKETHANDLER_H_ */
