@@ -22,8 +22,17 @@
 /* Defines for configurable header values */
 
 #define WGRPID 0x1000
-#define GRPVER 0x26DEFA00       //seconds since Jan 1, 2000, creation Sept 1,2020 
-#define MAXPKTSZ 1500     
+#define GRPVER 0x26DEFA00       //seconds since Jan 1,2000, creation Sept 1,2020
+#define MAXPKTSZ 1500 
+
+#define WRITERID_CNTRL 0xAC00
+#define WRITERID_AXX 0xAC01
+#define WRITERID_AXY 0xAC02
+#define WRITERID_AXZ 0xAC03
+#define WRITERID_AXS 0xAC04
+
+/* static defines */
+#define DBLOVERFLOW INT64_MAX*1e-9
 
 
 /* struct definitions for networkpacket structure */
@@ -35,7 +44,7 @@ struct eth_hdr_t {
         uint8_t srcmac[6];
         uint16_t ethtyp;
 };
-
+/*
 struct ip_hdr_t {
         uint8_t vl;
         uint8_t dsf;
@@ -55,7 +64,7 @@ struct udp_hdr_t {
         uint16_t len;
         uint16_t chksm;
 };
-
+*/
 struct ntwrkmsg_hdr_t {
         uint8_t ver_fl;
         uint8_t extfl;
@@ -79,12 +88,39 @@ struct extntwrkmsg_hdr_t {
         uint64_t timestamp;
 };
 
-struct dtstmsg_t {
-        uint32_t varId;
-        uint64_t value;
+struct szrry_t {
+        uint16_t * size;
+};
+
+struct dtstmsg_cntrl_t{
+        uint8_t dtstmsg_hdr;            //only DataSetFlags1
+        uint16_t fldcnt;                //should be 11
+        int64_t xvel_set;		//double encoded as Int64
+	int64_t yvel_set;		//double encoded as Int64
+	int64_t zvel_set;		//double encoded as Int64
+	int64_t spindlespeed;		//double encoded as Int64
+	uint8_t xenable;                //bool encoded as uint8			
+	uint8_t yenable;		//bool encoded as uint8		
+	uint8_t zenable;		//bool encoded as uint8		
+	uint8_t spindleenable;		//bool encoded as uint8	
+	uint8_t spindlebrake;		//bool encoded as uint8	
+	uint8_t machinestatus;		//bool encoded as uint8	
+	uint8_t estopstatus;            //bool encoded as uint8	
+};
+
+struct dtstmsg_axs_t {
+        uint8_t dtstmsg_hdr;            //only DataSetFlags1
+        uint16_t fldcnt;                //should be 2 for axis
+        uint64_t pos_cur;               //double encoded as uInt64
+        uint8_t fault;                  //bool encoded as uint8
 };
 
 #pragma pack(pop)       /* reset to original alignment */
+
+union dtstmsg_t {
+        struct dtstmsg_cntrl_t* dtstmsg_cntrl;
+        struct dtstmsg_axs_t* dtstmsg_axs;
+};
 
 /* struct definition for network packet */
 struct rt_pkt_t {
@@ -96,11 +132,19 @@ struct rt_pkt_t {
         struct grp_hdr_t *grp_hdr;
         struct pyld_hdr_t *pyl_hdr;
         struct extntwrkmsg_hdr_t *extntwrkmsg_hdr;
-        struct dtstmsg_t *dtstmsg;
+        struct szrry_t *szrry;
+        union dtstmsg_t *dtstmsg;
         uint32_t len;
 };
 
+/* Enum for Type of the DateSetMessage */
+enum msgtyp_t {
+        CNTRL,
+        AXS,
+};
+
 /* Enum for variable Type, see variable list in "mk_shminterface.h" */
+/*
 enum varID_t {
         xvel_set = 0,
 	yvel_set = 1,
@@ -138,22 +182,33 @@ enum varID_t {
         yfault = 33,
         zfault = 34,
 };
+*/
 
-/* allocates a new packet and buffer and sets the packet */
-int createpkt(struct rt_pkt_t* pkt, int msgcnt);
+/* allocates a new packet and buffer  */
+int createpkt(struct rt_pkt_t* pkt);
 
 /* clears the paket and frees the memory */
 void destroypkt(struct rt_pkt_t*pkt);
 
-/* resets a packet, clears the buffer, sets the pointers according to msgcnt,
-inits paket headers */
-void resetpkt(struct rt_pkt_t* pkt, int msgcnt);
+/* sets a packet, clears the buffer, sets the pointers according to msgcnt
+ * and msgtype, then inits paket headers 
+ * Limitation in implementation: Cannot mix messages of mutliple types */
+int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp);
 
 /* sets all standard header values which do not change during the program
-execution */
-void Initpkthdrs(struct rt_pkt_t* pkt);
+ * execution */
+void initpkthdrs(struct rt_pkt_t* pkt);
 
-/* fill packet with information from control */
-void fillpkt(struct rt_pk_t* pkt, struct cntrlnfo_t* cntrlnfo);
+/* fill packet with information from control, packet must already have the
+ * correct number of message (1)*/
+int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo);
+
+/* converts double to int64 by changing the unit to nano units
+ * e.g. multiplying by 10^9, keeping the sign */
+int dbl2nint64(double val, int64_t *res);
+
+/* converts int64 to double by changing the nano unit to units
+ * e.g. multiplying by 10^-9, keeping the sign */
+double nint642dbl( int64_t val);
 
 #endif /* _PACKETHANDLER_H_ */
