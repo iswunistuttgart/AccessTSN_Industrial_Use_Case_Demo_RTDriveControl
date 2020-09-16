@@ -9,6 +9,8 @@
 
 void initpkthdrs(struct rt_pkt_t* pkt)
 {
+        // eth_hdr
+        // pkt->eth_hdr->ethtyp = htons(ETHERTYPE);
         // ntwrkmsg_hdr_t 
         pkt->ntwrkmsg_hdr->ver_fl = 0xF1;       //Version = 1; PublishID, GroupHeader, PayloadHdr and ExtendedFlags 1 enables
         pkt->ntwrkmsg_hdr->extfl = 0x21;        //pubishID datatype Uint16; Timestamp enabled
@@ -23,10 +25,10 @@ int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
 {
         uint16_t dtstmsgsz = 0;
         memset(pkt->sktbf,0,MAXPKTSZ*sizeof(char));
-        pkt->eth_hdr = NULL;
+        pkt->eth_hdr = NULL; //pkt->sktbf;
         pkt->ip_hdr = NULL;
         pkt->udp_hdr = NULL;
-        pkt->ntwrkmsg_hdr = pkt->sktbf;
+        pkt->ntwrkmsg_hdr = pkt->sktbf;//(struct ntwrkmsg_hdr_t*) ((char *) pkt->eth_hdr + sizeof(struct eth_hdr_t));
         pkt->grp_hdr = (struct grp_hdr_t*) ((char *) pkt->ntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
         pkt->pyl_hdr = (struct pyl_hdr_t*) ((char *) pkt->grp_hdr + sizeof(struct grp_hdr_t));
         pkt->pyl_hdr->msgcnt = msgcnt;
@@ -108,10 +110,12 @@ void destroypkt(struct rt_pkt_t*pkt)
         pkt = NULL;
 }
 
-int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo)
+int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seqno)
 {
         int64_t tmp;
+        struct timespec time;
         int ok = 0;
+        pkt->grp_hdr->seqNo = seqno;
         pkt->pyl_hdr->wrtrId = WRITERID_CNTRL;
         ok += dbl2nint64(cntrlnfo->x_set.cntrlvl,&tmp);
         pkt->dtstmsg->dtstmsg_cntrl->xvel_set = htobe64(tmp);
@@ -129,6 +133,9 @@ int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo)
         pkt->dtstmsg->dtstmsg_cntrl->machinestatus = (uint8_t) cntrlnfo->machinestatus;
         pkt->dtstmsg->dtstmsg_cntrl->estopstatus = (uint8_t) cntrlnfo->estopstatus;
 
+        clock_gettime(CLOCK_TAI,&time);
+        pkt->extntwrkmsg_hdr->timestamp = cnvrt_tmspc2uatm(time);
+
         return ok;
 }
 
@@ -143,6 +150,84 @@ int dbl2nint64(double val, int64_t* res)
 double nint642dbl(int64_t val)
 {
         return (double)(val*1e-9);
+}
+
+int fillethaddr(struct sockaddr_ll *addr, uint8_t *mac_addr, uint16_t ethtyp, int fd, char *ifnm)
+{
+        if (NULL == addr)
+                return 1;       //fail
+        
+        // get index of network interface by name
+        struct ifreq iface;
+        memset(&iface, 0, sizeof(struct ifreq));
+        strncpy(iface.ifr_name, ifnm, strnlen(ifnm, IFNAMSIZ));
+        if((ioctl(fd,SIOCGIFINDEX,&iface)) == -1)
+                return 1;       //fail
+        
+        memset(addr, 0, sizeof(struct sockaddr_ll));
+        addr->sll_family = AF_PACKET;
+        addr->sll_protocol = htons(ethtyp);
+        addr->sll_halen = ETH_ALEN;
+        addr->sll_ifindex = iface.ifr_ifindex;
+        memcpy(addr->sll_addr,mac_addr,ETH_ALEN);
+
+        return 0;       //succeded
+}
+
+int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime, clockid_t clkid)
+{
+        struct cmsghdr *cmsg;
+        char cntlmsg[CMSG_SPACE(sizeof(txtime)) /*+ CMSG_SPACE(sizeof(clkid)) + CMSG_SPACE(sizeof(uint8_t))*/] = {};
+        uint8_t drop_if_late = 1;
+
+        if(NULL == msg_hdr)
+                return 1;       //fail
+                
+        memset(msg_hdr,0,sizeof(struct msghdr));
+        msg_hdr->msg_name = addr;
+        msg_hdr->msg_namelen = sizeof(struct sockaddr_ll);
+        msg_hdr->msg_control = cntlmsg;
+        msg_hdr->msg_controllen = sizeof(cntlmsg);
+
+        cmsg = CMSG_FIRSTHDR(msg_hdr);
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type = SCM_TXTIME;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(txtime));
+        *((uint64_t *) CMSG_DATA(cmsg)) = txtime;
+
+        /* not in lkernel v5.9 or older
+        cmsg = CMSG_NXTHDR(msg_hdr, cmsg);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_CLOCKID;
+	cmsg->cmsg_len = CMSG_LEN(sizeof(clockid_t));
+	*((clockid_t *) CMSG_DATA(cmsg)) = clkid;
+
+        cmsg = CMSG_NXTHDR(msg_hdr, cmsg);
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type = SCM_DROP_IF_LATE;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(uint8_t));
+        *((uint8_t *) CMSG_DATA(cmsg)) = drop_if_late;
+        */
+
+        return 0;       //succeded
+}
+
+
+int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr)
+{
+        int sndcnt;
+        if(NULL == msg_hdr)
+                return 1;       //fail
+
+        msg_hdr->msg_iov->iov_base = buf;
+        msg_hdr->msg_iov->iov_len = buflen;
+        msg_hdr->msg_iovlen = 1;
+        
+
+        sndcnt = sendmsg(fd,msg_hdr,0);
+        if (sndcnt < 0)
+                return 1;       //fail
+        return 0;
 }
 
 
@@ -231,3 +316,5 @@ int retusedpkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt)
                 return 1;       //fail
         return 1;       //succeded
 }
+
+/* ##### END PacketStore ##### */

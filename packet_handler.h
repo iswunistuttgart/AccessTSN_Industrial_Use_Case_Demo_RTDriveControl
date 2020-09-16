@@ -17,7 +17,14 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <net/ethernet.h>
+#include <linux/if.h>
+#include <linux/if_packet.h>
+#include <sys/ioctl.h>
+#include <time.h>
 #include "datastructs.h"
+#include "opcua_time.h"
 
 /* Defines for configurable header values */
 
@@ -30,6 +37,14 @@
 #define WRITERID_AXY 0xAC02
 #define WRITERID_AXZ 0xAC03
 #define WRITERID_AXS 0xAC04
+
+#define DSTADDRCNTRL {0x01,0xAC,0xCE,0x55,0x00,0x00}    //Ehternet Multicast-Address the Control should sent to
+#define DSTADDRAXSX  {0x01,0xAC,0xCE,0x55,0x00,0x01}    //Ehternet Multicast-Address x-Axis should sent to
+#define DSTADDRAXSY  {0x01,0xAC,0xCE,0x55,0x00,0x02}    //Ehternet Multicast-Address y-Axis should sent to
+#define DSTADDRAXSZ  {0x01,0xAC,0xCE,0x55,0x00,0x03}    //Ehternet Multicast-Address z-Axis should sent to
+#define DSTADDRAXSS  {0x01,0xAC,0xCE,0x55,0x00,0x04}    //Ehternet Multicast-Address the Spindle should sent to
+
+#define ETHERTYPE 0xB62C        //Ethertype for OPC UA UADP NetworkMessages over Ethernet II
 
 /* static defines */
 #define DBLOVERFLOW INT64_MAX*1e-9
@@ -203,7 +218,7 @@ void initpkthdrs(struct rt_pkt_t* pkt);
 
 /* fill packet with information from control, packet must already have the
  * correct number of message (1)*/
-int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo);
+int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seqno);
 
 /* converts double to int64 by changing the unit to nano units
  * e.g. multiplying by 10^9, keeping the sign */
@@ -213,8 +228,11 @@ int dbl2nint64(double val, int64_t *res);
  * e.g. multiplying by 10^-9, keeping the sign */
 double nint642dbl(int64_t val);
 
+/* fills the LinkLayer(Ethernet)-Address structure */
+int fillethaddr(struct sockaddr_ll *addr, uint8_t *mac_addr, uint16_t ethtyp, int fd, char *ifnm);
+
 /* fills the msghdr structure with the necessary values to sned the packet */
-void fillmsghdr(struct msghdr *msg_hdr, uint64_t txtime, clockid_t clkid);
+int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime, clockid_t clkid);
 
 /* sends the packet with the specified txtime and other values */
 int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr);
