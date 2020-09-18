@@ -13,6 +13,9 @@
  * 
  */
 
+#include <limits.h>
+#include <pthread.h>
+#include <sched.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -23,17 +26,30 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "demohelpers.h"
+#include <time.h>
+#include "packet_handler.h"
 
 uint8_t run = 1;
+
+struct cnfg_optns_t{
+        struct timespec basetm;
+        uint32_t intrvl_ns;
+
+};
+
 struct tsnsender_t {
-        uint16_t dstp;
-        uint32_t period;
-        uint32_t srcaddr;
+        struct cnfg_optns_t cnfg_optns;
         uint32_t dstaddrx;
         uint32_t dstaddry;
         uint32_t dstaddrz;
         uint32_t dstaddrs;
+        int rxsckt;
+        int txsckt;
+        struct mk_mainoutput *txshm;
+        struct mk_maininput *rxshm;
+        struct pktstore_t pkts;
+        pthread_attr_t rtthrd_attr;
+        pthread_t rt_thrd;
 };
 
 /* signal handler */
@@ -95,25 +111,181 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
 // open socket
 // close socket
 
+//initialization
+int init(struct tsnsender_t *sender)
+{
+        int ok = 0;
+        struct sched_param param;
+        //open send socket
+
+        //open recv socket
+
+        //open shared memory
+
+        //allocate memory for packets
+        ok += initpktstrg(&(sender->pkts),5);
+
+        //prefault stack/heap
+
+        // ### setup rt_thread
+        //Lock memory
+        if(mlockall(MCL_CURRENT|MCL_FUTURE) == -1) {
+                printf("mlockall failed: %m\n");
+                return -2;
+        }
+        //Initialize pthread attributes (default values)
+        ok = pthread_attr_init(&(sender->rtthrd_attr));
+        if (ok) {
+                printf("init pthread attributes failed\n");
+                return 1; //fail
+        }
+        //Set a specific stack size 
+        ok = pthread_attr_setstacksize(&(sender->rtthrd_attr), PTHREAD_STACK_MIN);
+        if (ok) {
+            printf("pthread setstacksize failed\n");
+            return 1;   //fail
+        }
+ 
+        //Set scheduler policy and priority of pthread
+        ok = pthread_attr_setschedpolicy(&(sender->rtthrd_attr), SCHED_FIFO);
+        if (ok) {
+                printf("pthread setschedpolicy failed\n");
+                return 1;
+        }
+        param.sched_priority = 80;
+        ok = pthread_attr_setschedparam(&(sender->rtthrd_attr), &param);
+        if (ok) {
+                printf("pthread setschedparam failed\n");
+                return 1;
+        }
+        //Use scheduling parameters of attr
+        ok = pthread_attr_setinheritsched(&(sender->rtthrd_attr), PTHREAD_EXPLICIT_SCHED);
+        if (ok) {
+                printf("pthread setinheritsched failed\n");
+                return 1;
+        }
+
+        //setup pmc-thread (optional)
+
+        return ok;
+}
+
+//End execution with cleanup
+int cleanup(struct tsnsender_t *sender)
+{
+        int ok = 0;
+        //stop threads
+
+        //close rx socket
+
+        //close tx socket
+
+        //close shared memory
+
+        //free allocated memory for packets
+        ok += destroypktstrg(&(sender->pkts));
+
+        return ok;
+}
+
+//increase period by timeinterval
+void inc_prd(struct timespec *prd, uint32_t intrvl)
+{
+        prd->tv_nsec += intrvl;
+ 
+        while (prd->tv_nsec >= 1000000000) {
+                //timespec nsec overflow
+                prd->tv_sec++;
+                prd->tv_nsec -= 1000000000;
+        }
+}
+
+//Real time thread
+void *rt_thrd(struct tsnsender_t *sender)
+{
+        struct timespec nxtprd;
+        uint32_t cyclno;
+
+        /*sleep this (basetime minus one period) is reached
+        or (basetime plus multiple periods) */
+        nxtprd = sender->cnfg_optns.basetm;
+
+        //number of cycle
+        cyclno = 0;
+
+        //while loop
+        while(1){
+                
+
+                //check for RX-packet
+
+                //parse RX-packet
+
+                //write RX values to shared memory
+
+                //get TX values from shared memory
+
+                //create TX-Packet
+                
+                //calculate TxTime-Stamp
+
+                //send TX-Packet
+
+                //increase cycle and update time
+                cyclno++;
+                inc_prd(&nxtprd,sender->cnfg_optns.intrvl_ns);
+
+                //sleep until the next cycle
+                clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
+        }
+
+        return NULL;
+}
+
+
 int main(int argc, char* argv[])
 {
         struct tsnsender_t sender;
+        int ok;
+
+        //set standard values
         
+        //parse CLI arguments
         evalCLI(argc,argv,&sender);
 
         //init (including real-time)
-
+        ok = init(&sender);
+        if(ok != 0){
+                printf("Initialization failed\n");
+                //cleanup
+                cleanup(&sender);
+                return ok;       //fail
+        }
+        
         //register signal handlers
         signal(SIGTERM, sigfunc);
         signal(SIGINT, sigfunc);
 
-        // mainloop
-        while(run) {
-
-              
+        //start rt-thread   
+        /* Create a pthread with specified attributes */
+        ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), rt_thrd, NULL);
+        if (ok) {
+                printf("create pthread failed\n");
+                //cleanup
+                cleanup(&sender);
+                return 1;      //fail
         }
+ 
+        /* Join the thread and wait until it is done */
+        ret = pthread_join(thread, NULL);
+        if (ret)
+                printf("join pthread failed: %m\n");
+        
+
+        //start pmc-thread
 
         // cleanup
+        ok = cleanup(&sender);
 
-        return 0;
+        return 0;       //succeded
 }
