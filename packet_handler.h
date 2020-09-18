@@ -24,7 +24,7 @@
 #include <sys/ioctl.h>
 #include <time.h>
 #include "datastructs.h"
-#include "opcua_time.h"
+#include "time_calc.h"
 
 /* Defines for configurable header values */
 

@@ -10,13 +10,13 @@
  * in the OPC UA network messages.
  */
 
-#ifndef _OPCUA_TIME_H_
-#define _OPCUA_TIME_H_
+#ifndef _TIME_CALC_H_
+#define _TIME_CALC_H_
 
 #include <time.h>
 #include <stdint.h>
 
-#define EPOCH_DIFF 11644473600LL
+#define OPC_EPOCH_DIFF 11644473600LL
 
 /* convert timespec to ua-time */
 uint64_t cnvrt_tmspc2uatm(struct timespec orgtm);
@@ -26,4 +26,4 @@ struct timespec cnvrt_uatm2tmspc(uint64_t orgtm);
 
 
 
-#endif /* _OPCUA_TIME_H_ */
+#endif /* _TIME_CALC_H_ */

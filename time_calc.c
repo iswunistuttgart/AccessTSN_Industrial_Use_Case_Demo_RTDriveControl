@@ -4,12 +4,12 @@
  * Author: Philipp Neher <philipp.neher@isw.uni-stuttgart.de>
  */
 
-#include "opcua_time.h"
+#include "time_calc.h"
 
 uint64_t cnvrt_tmspc2uatm(struct timespec orgtm)
 {
         uint64_t newtm;
-        newtm = EPOCH_DIFF;
+        newtm = OPC_EPOCH_DIFF;
         newtm += orgtm.tv_sec;
         newtm *= 10000000LL;
         newtm += orgtm.tv_nsec / 100;
@@ -22,7 +22,7 @@ struct timespec cnvrt_uatm2tmspc(uint64_t orgtm)
         struct timespec newtm;
         uint64_t sec;
         uint32_t nsec;
-        sec = orgtm/10000000LL - EPOCH_DIFF;
+        sec = orgtm/10000000LL - OPC_EPOCH_DIFF;
         newtm.tv_sec = (time_t)sec;
         if(sec != newtm.tv_sec) //overflow check
                 newtm.tv_sec = (time_t) -1;

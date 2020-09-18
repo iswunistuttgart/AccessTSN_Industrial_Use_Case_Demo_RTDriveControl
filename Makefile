@@ -13,7 +13,7 @@ LDIR=../lib
 
 LIBS=-lrt
 
-_OBJ = demo_tsnsender.o packet_handler.o axisshm_handler.o opcua_time.o
+_OBJ = demo_tsnsender.o packet_handler.o axisshm_handler.o time_calc.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.c 
@@ -21,7 +21,7 @@ $(ODIR)/%.o: %.c
 
 all: demo_tsnsender
 
-demo_tsnsender: obj/demo_tsnsender.o obj/packet_handler.o obj/axisshm_handler.o obj/opcua_time.o
+demo_tsnsender: obj/demo_tsnsender.o obj/packet_handler.o obj/axisshm_handler.o obj/time_calc.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
