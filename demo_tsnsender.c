@@ -79,7 +79,7 @@ static void usage(char *appname)
                 " -y [IP-address]      Destination IP-address of Y-axis (use dot-notation)\n"
                 " -z [IP-address]      Destination IP-address of Z-axis (use dot-notation)\n"
                 " -s [IP-address]      Destination IP-address of spindle (use dot-notation)\n"
-                " -t [value]           Specifies update-period in milliseconds. Default 10 seconds.\n"
+                " -t [value]           Specifies update-period in microseconds. Default 10 seconds.\n"
                 " -h                   Prints this help message and exits\n"
                 "\n",
                 appname);
@@ -91,13 +91,13 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         int c;
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:d"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b"))) {
                 switch(c) {
-                case 'd':
-                        (*sender);
+                case 'b':
+                        cnvrt_dbl2tmspec(atof(optarg), &(sender->cnfg_optns.basetm));
                         break;
                 case 't':
-                        (*sender).period = atoi(optarg)*1000;
+                        (*sender).cnfg_optns.intrvl_ns = atoi(optarg)*1000;
                         break;
                 case 'h':
                 default:
@@ -152,6 +152,7 @@ int init(struct tsnsender_t *sender)
                 printf("pthread setschedpolicy failed\n");
                 return 1;
         }
+        pthread_attr_getschedparam(&(sender->rtthrd_attr),&param);
         param.sched_priority = 80;
         ok = pthread_attr_setschedparam(&(sender->rtthrd_attr), &param);
         if (ok) {
@@ -188,30 +189,18 @@ int cleanup(struct tsnsender_t *sender)
         return ok;
 }
 
-//increase period by timeinterval
-void inc_prd(struct timespec *prd, uint32_t intrvl)
-{
-        prd->tv_nsec += intrvl;
- 
-        while (prd->tv_nsec >= 1000000000) {
-                //timespec nsec overflow
-                prd->tv_sec++;
-                prd->tv_nsec -= 1000000000;
-        }
-}
-
 //Real time thread
 void *rt_thrd(struct tsnsender_t *sender)
 {
         struct timespec nxtprd;
-        uint32_t cyclno;
-
+        struct timespec curtm;
+                
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods) */
-        nxtprd = sender->cnfg_optns.basetm;
-
-        //number of cycle
-        cyclno = 0;
+        clock_gettime(CLOCK_TAI,&curtm);
+        clc_est(&curtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &nxtprd);
+        clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
+        //TODO define how this timestamp is interpredet as TXTIME or Wakeuptime for application, resulting offset needs to be added
 
         //while loop
         while(1){
@@ -231,8 +220,7 @@ void *rt_thrd(struct tsnsender_t *sender)
 
                 //send TX-Packet
 
-                //increase cycle and update time
-                cyclno++;
+                //update time
                 inc_prd(&nxtprd,sender->cnfg_optns.intrvl_ns);
 
                 //sleep until the next cycle
