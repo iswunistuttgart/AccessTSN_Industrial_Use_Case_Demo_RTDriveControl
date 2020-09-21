@@ -203,10 +203,10 @@ enum varID_t {
 
 
 /* allocates a new packet and buffer  */
-int createpkt(struct rt_pkt_t* pkt);
+int createpkt(struct rt_pkt_t** pkt);
 
 /* clears the paket and frees the memory */
-void destroypkt(struct rt_pkt_t*pkt);
+void destroypkt(struct rt_pkt_t* pkt);
 
 /* sets a packet, clears the buffer, sets the pointers according to msgcnt
  * and msgtype, then inits paket headers 

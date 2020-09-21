@@ -55,7 +55,7 @@ void cnvrt_int642tmspec(uint64_t orgtm, struct timespec *newtm)
         newtm->tv_sec = orgtm / NSEC_IN_SEC;
 }
 
-void cnvrt_dbl2tmspec(uint64_t orgtm, struct timespec *newtm)
+void cnvrt_dbl2tmspec(double orgtm, struct timespec *newtm)
 {
         newtm->tv_sec = (time_t)orgtm;
         newtm->tv_nsec = (orgtm - newtm->tv_sec)* NSEC_IN_SEC;

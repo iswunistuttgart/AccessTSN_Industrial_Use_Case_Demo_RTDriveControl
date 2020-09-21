@@ -70,7 +70,7 @@ int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
         return 0;       //succeded
 }
 
-int createpkt(struct rt_pkt_t* pkt)
+int createpkt(struct rt_pkt_t** pkt)
 {
         struct rt_pkt_t* newpkt;
         int ok;
@@ -89,11 +89,11 @@ int createpkt(struct rt_pkt_t* pkt)
                 return 1;
         }
 
-        pkt = newpkt;
+        *pkt = newpkt;
         return 0;       //succeded
 }
 
-void destroypkt(struct rt_pkt_t*pkt)
+void destroypkt(struct rt_pkt_t* pkt)
 {
         pkt->eth_hdr = NULL;
         pkt->ip_hdr = NULL;
@@ -104,10 +104,10 @@ void destroypkt(struct rt_pkt_t*pkt)
         pkt->extntwrkmsg_hdr = NULL;
         pkt->dtstmsg = NULL;
         free(pkt->sktbf);
+        pkt->sktbf = NULL;
         pkt->len = 0;
         pkt->sktbf = NULL;
         free(pkt);
-        pkt = NULL;
 }
 
 int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seqno)
@@ -248,7 +248,7 @@ int initpktstrg(struct pktstore_t *pktstore, uint32_t size)
         }
         while(i < pktstore->size) {
                 pkt = NULL;
-                ok = createpkt(pkt);
+                ok = createpkt(&pkt);
                 if( ok != 0){
                         pktstore->size = i;
                         return 1;       //fail
@@ -269,6 +269,7 @@ int destroypktstrg(struct pktstore_t  *pktstore)
         int i = 0;
         while(i < pktstore->size) {
                 destroypkt(pktstore->pktstrelmt[i].pkt);
+                pktstore->pktstrelmt[i].pkt = NULL;
                 i++;
         }
         pktstore->size = 0;

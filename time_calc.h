@@ -36,7 +36,7 @@ uint64_t cnvrt_tmspec2int64(struct timespec *orgtm);
 void cnvrt_int642tmspec(uint64_t orgtm, struct timespec *newtm);
 
 /* convert double (sec) to timespec */
-void cnvrt_dbl2tmspec(uint64_t orgtm, struct timespec *newtm);
+void cnvrt_dbl2tmspec(double orgtm, struct timespec *newtm);
 
 /* compare two timespecs */
 bool cmptmspc_Ab4rB(const struct timespec *A, const struct timespec *B);
