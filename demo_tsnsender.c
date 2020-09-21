@@ -29,6 +29,7 @@
 #include <time.h>
 #include "packet_handler.h"
 
+
 uint8_t run = 1;
 
 struct cnfg_optns_t{
@@ -91,7 +92,7 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         int c;
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspec(atof(optarg), &(sender->cnfg_optns.basetm));
@@ -205,7 +206,7 @@ void *rt_thrd(void *tsnsender)
         //TODO define how this timestamp is interpredet as TXTIME or Wakeuptime for application, resulting offset needs to be added
 	int cyclecnt =0;
         //while loop
-        while(cyclecnt < 1000000){
+        while(cyclecnt < 10000){
                 
                 clock_gettime(CLOCK_TAI,&curtm);
 		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
@@ -261,7 +262,8 @@ int main(int argc, char* argv[])
 
         //start rt-thread   
         /* Create a pthread with specified attributes */
-        ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, NULL);
+  //      ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, NULL);
+        rt_thrd((void*)&sender);
         if (ok) {
                 printf("create pthread failed\n");
                 //cleanup
@@ -271,7 +273,7 @@ int main(int argc, char* argv[])
  
         /* Join the thread and wait until it is done */
 	int ret;
-        ret = pthread_join((sender.rt_thrd), NULL);
+//        ret = pthread_join((sender.rt_thrd), NULL);
         if (ret)
                 printf("join pthread failed: %m\n");
         
