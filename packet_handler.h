@@ -15,6 +15,7 @@
 #ifndef _PACKETHANDLER_H_
 #define _PACKETHANDLER_H_
 
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -145,7 +146,7 @@ struct rt_pkt_t {
         struct udp_hdr_t *udp_hdr;
         struct ntwrkmsg_hdr_t *ntwrkmsg_hdr;
         struct grp_hdr_t *grp_hdr;
-        struct pyld_hdr_t *pyl_hdr;
+        struct pyld_hdr_t *pyld_hdr;
         struct extntwrkmsg_hdr_t *extntwrkmsg_hdr;
         struct szrry_t *szrry;
         union dtstmsg_t *dtstmsg;

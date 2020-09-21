@@ -11,9 +11,9 @@ CFLAGS=$(INC) -g
 ODIR=obj
 LDIR=../lib
 
-LIBS=-lrt
+LIBS=-pthread -lrt
 
-_OBJ = demo_tsnsender.o packet_handler.o axisshm_handler.o time_calc.o
+_OBJ = packet_handler.o axisshm_handler.o time_calc.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.c 
@@ -21,10 +21,10 @@ $(ODIR)/%.o: %.c
 
 all: demo_tsnsender
 
-demo_tsnsender: obj/demo_tsnsender.o obj/packet_handler.o obj/axisshm_handler.o obj/time_calc.o
+demo_tsnsender: demo_tsnsender.c obj/packet_handler.o obj/axisshm_handler.o obj/time_calc.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(INC)/*~ demo_tsnsender
+	rm -f $(ODIR)/*.o *~ core demoapps_common/*~ demo_tsnsender

@@ -28,23 +28,23 @@ int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
         pkt->eth_hdr = NULL; //pkt->sktbf;
         pkt->ip_hdr = NULL;
         pkt->udp_hdr = NULL;
-        pkt->ntwrkmsg_hdr = pkt->sktbf;//(struct ntwrkmsg_hdr_t*) ((char *) pkt->eth_hdr + sizeof(struct eth_hdr_t));
+        pkt->ntwrkmsg_hdr = (struct ntwrkmsg_hdr_t*) pkt->sktbf;//(struct ntwrkmsg_hdr_t*) ((char *) pkt->eth_hdr + sizeof(struct eth_hdr_t));
         pkt->grp_hdr = (struct grp_hdr_t*) ((char *) pkt->ntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
-        pkt->pyl_hdr = (struct pyl_hdr_t*) ((char *) pkt->grp_hdr + sizeof(struct grp_hdr_t));
-        pkt->pyl_hdr->msgcnt = msgcnt;
-        pkt->extntwrkmsg_hdr = (struct extntwrkmsg_hdr_t*) ((char *) pkt->pyl_hdr + sizeof(pkt->pyl_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyl_hdr->wrtrId)));
+        pkt->pyld_hdr = (struct pyld_hdr_t*) ((char *) pkt->grp_hdr + sizeof(struct grp_hdr_t));
+        pkt->pyld_hdr->msgcnt = msgcnt;
+        pkt->extntwrkmsg_hdr = (struct extntwrkmsg_hdr_t*) ((char *) pkt->pyld_hdr + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)));
         pkt->szrry = (struct szrry_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
         
         switch(msgtyp){
         case CNTRL:
-                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyl_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyl_hdr->wrtrId)) + (msgcnt - 1)*sizeof(*(pkt->szrry)) + msgcnt*sizeof(struct dtstmsg_cntrl_t);
+                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)) + (msgcnt - 1)*sizeof(*(pkt->szrry)) + msgcnt*sizeof(struct dtstmsg_cntrl_t);
                 pkt->dtstmsg->dtstmsg_cntrl = (struct dtstmsg_cntrl_t*) ((char *) pkt->szrry + (msgcnt - 1)*sizeof(*(pkt->szrry)));
                 dtstmsgsz = sizeof(struct dtstmsg_cntrl_t);
                 pkt->dtstmsg->dtstmsg_cntrl->dtstmsg_hdr = 0x01;
                 pkt->dtstmsg->dtstmsg_cntrl->fldcnt = 11;
                 break;
         case AXS:
-                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyl_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyl_hdr->wrtrId)) + (msgcnt - 1)*sizeof(*(pkt->szrry)) + msgcnt*sizeof(struct dtstmsg_axs_t);
+                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)) + (msgcnt - 1)*sizeof(*(pkt->szrry)) + msgcnt*sizeof(struct dtstmsg_axs_t);
                 pkt->dtstmsg->dtstmsg_axs = (struct dtstmsg_axs_t*) ((char *) pkt->szrry + (msgcnt - 1)*sizeof(*(pkt->szrry)));
                 dtstmsgsz = sizeof(struct dtstmsg_axs_t);
                 pkt->dtstmsg->dtstmsg_axs->dtstmsg_hdr = 0x01;
@@ -100,7 +100,7 @@ void destroypkt(struct rt_pkt_t*pkt)
         pkt->udp_hdr = NULL;
         pkt->ntwrkmsg_hdr = NULL;
         pkt->grp_hdr = NULL;
-        pkt->pyl_hdr = NULL;
+        pkt->pyld_hdr = NULL;
         pkt->extntwrkmsg_hdr = NULL;
         pkt->dtstmsg = NULL;
         free(pkt->sktbf);
@@ -116,7 +116,7 @@ int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seq
         struct timespec time;
         int ok = 0;
         pkt->grp_hdr->seqNo = seqno;
-        pkt->pyl_hdr->wrtrId = WRITERID_CNTRL;
+        *(pkt->pyld_hdr->wrtrId) = WRITERID_CNTRL;
         ok += dbl2nint64(cntrlnfo->x_set.cntrlvl,&tmp);
         pkt->dtstmsg->dtstmsg_cntrl->xvel_set = htobe64(tmp);
         pkt->dtstmsg->dtstmsg_cntrl->xenable = (uint8_t) cntrlnfo->x_set.cntrlsw;
@@ -286,7 +286,7 @@ int getfreepkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt)
         while(i < pktstore->size) {
                 if(pktstore->pktstrelmt[i].used == false){
                         pkt = pktstore->pktstrelmt[i].pkt;
-                        pkt = pktstore->pktstrelmt[i].used = true;
+                        pktstore->pktstrelmt[i].used = true;
                         i = pktstore->size;
                 } else {
                         i++;

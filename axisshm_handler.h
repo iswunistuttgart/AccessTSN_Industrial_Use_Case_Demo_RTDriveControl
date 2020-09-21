@@ -11,10 +11,12 @@
 #ifndef _AXISSHMHANDLER_H_
 #define _AXISSHMHANDLER_H_
 
+#include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include "demoapps_common/mk_shminterface.h"
 #include "datastructs.h"
 
