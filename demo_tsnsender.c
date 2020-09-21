@@ -190,10 +190,12 @@ int cleanup(struct tsnsender_t *sender)
 }
 
 //Real time thread
-void *rt_thrd(struct tsnsender_t *sender)
+void *rt_thrd(void *tsnsender)
 {
+	struct tsnsender_t *sender;
         struct timespec nxtprd;
         struct timespec curtm;
+	sender = (struct tsnsender_t *) tsnsender;
                 
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods) */
@@ -201,10 +203,13 @@ void *rt_thrd(struct tsnsender_t *sender)
         clc_est(&curtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &nxtprd);
         clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
         //TODO define how this timestamp is interpredet as TXTIME or Wakeuptime for application, resulting offset needs to be added
-
+	int cyclecnt =0;
         //while loop
-        while(1){
+        while(cyclecnt < 1000000){
                 
+                clock_gettime(CLOCK_TAI,&curtm);
+		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
+		cyclecnt++;
 
                 //check for RX-packet
 
@@ -256,7 +261,7 @@ int main(int argc, char* argv[])
 
         //start rt-thread   
         /* Create a pthread with specified attributes */
-        ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), rt_thrd, NULL);
+        ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, NULL);
         if (ok) {
                 printf("create pthread failed\n");
                 //cleanup
@@ -265,7 +270,8 @@ int main(int argc, char* argv[])
         }
  
         /* Join the thread and wait until it is done */
-        ret = pthread_join(thread, NULL);
+	int ret;
+        ret = pthread_join((sender.rt_thrd), NULL);
         if (ret)
                 printf("join pthread failed: %m\n");
         
