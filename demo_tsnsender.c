@@ -51,6 +51,8 @@ struct tsnsender_t {
         struct pktstore_t pkts;
         pthread_attr_t rtthrd_attr;
         pthread_t rt_thrd;
+        pthread_attr_t rxthrd_attr;
+        pthread_t rx_thrd;
 };
 
 /* signal handler */
@@ -126,10 +128,10 @@ int init(struct tsnsender_t *sender)
         //allocate memory for packets
         ok += initpktstrg(&(sender->pkts),5);
 
-        //prefault stack/heap
+        //prefault stack/heap --> done by mlocking APIs
 
         // ### setup rt_thread
-        //Lock memory
+        //Lock memory --> maybe only lock necessary pages (not all) using mlock
         if(mlockall(MCL_CURRENT|MCL_FUTURE) == -1) {
                 printf("mlockall failed: %m\n");
                 return -2;
@@ -166,6 +168,52 @@ int init(struct tsnsender_t *sender)
                 printf("pthread setinheritsched failed\n");
                 return 1;
         }
+        //detach thread since returnvalue does not matter
+        ok = pthread_attr_setdetachstate(&(sender->rtthrd_attr),PTHREAD_CREATE_DETACHED);
+        if (ok) {
+                printf("pthread setdetached failed\n");
+                return 1;
+        }
+
+        // ##### setup rx-thread
+        //Initialize pthread attributes (default values)
+        ok = pthread_attr_init(&(sender->rxthrd_attr));
+        if (ok) {
+                printf("init pthread attributes failed\n");
+                return 1; //fail
+        }
+        //Set a specific stack size 
+        ok = pthread_attr_setstacksize(&(sender->rxthrd_attr), PTHREAD_STACK_MIN);
+        if (ok) {
+            printf("pthread setstacksize failed\n");
+            return 1;   //fail
+        }
+ 
+        //Set scheduler policy and priority of pthread
+        ok = pthread_attr_setschedpolicy(&(sender->rxthrd_attr), SCHED_FIFO);
+        if (ok) {
+                printf("pthread setschedpolicy failed\n");
+                return 1;
+        }
+        pthread_attr_getschedparam(&(sender->rxthrd_attr),&param);
+        param.sched_priority = 75;
+        ok = pthread_attr_setschedparam(&(sender->rxthrd_attr), &param);
+        if (ok) {
+                printf("pthread setschedparam failed\n");
+                return 1;
+        }
+        //Use scheduling parameters of attr
+        ok = pthread_attr_setinheritsched(&(sender->rxthrd_attr), PTHREAD_EXPLICIT_SCHED);
+        if (ok) {
+                printf("pthread setinheritsched failed\n");
+                return 1;
+        }
+        //detach thread since returnvalue does not matter
+        ok = pthread_attr_setdetachstate(&(sender->rxthrd_attr),PTHREAD_CREATE_DETACHED);
+        if (ok) {
+                printf("pthread setdetached failed\n");
+                return 1;
+        }
 
         //setup pmc-thread (optional)
 
@@ -190,16 +238,56 @@ int cleanup(struct tsnsender_t *sender)
         return ok;
 }
 
-//Real time thread
+//Real time thread sender
 void *rt_thrd(void *tsnsender)
 {
-	struct tsnsender_t *sender;
+	const struct tsnsender_t *sender = (const struct tsnsender_t *) tsnsender;
         struct timespec nxtprd;
         struct timespec curtm;
-	sender = (struct tsnsender_t *) tsnsender;
-                
+	                
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods) */
+        clock_gettime(CLOCK_TAI,&curtm);
+        clc_est(&curtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &nxtprd);
+        clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
+        //TODO define how this timestamp is interpredet as TXTIME or Wakeuptime for application, resulting offset needs to be added
+	int cyclecnt =0;
+        //while loop
+        while(cyclecnt < 10000){
+                
+                clock_gettime(CLOCK_TAI,&curtm);
+		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
+		cyclecnt++;
+
+                //get TX values from shared memory
+
+                //create TX-Packet
+                
+                //calculate TxTime-Stamp
+
+                //send TX-Packet
+
+                //update time
+                inc_prd(&nxtprd,sender->cnfg_optns.intrvl_ns);
+
+                //sleep until the next cycle
+                clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
+        }
+
+        return NULL;
+}
+
+//Real time recv thread
+void *rx_thrd(void *tsnsender)
+{
+	const struct tsnsender_t *sender = (const struct tsnsender_t *) tsnsender;
+        struct timespec nxtprd;
+        struct timespec curtm;
+	
+                
+        /*sleep this (basetime minus one period) is reached
+        or (basetime plus multiple periods), calculated fitting offset to recv */
+        //****TODO get offset for calcultaion right
         clock_gettime(CLOCK_TAI,&curtm);
         clc_est(&curtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &nxtprd);
         clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
@@ -217,14 +305,6 @@ void *rt_thrd(void *tsnsender)
                 //parse RX-packet
 
                 //write RX values to shared memory
-
-                //get TX values from shared memory
-
-                //create TX-Packet
-                
-                //calculate TxTime-Stamp
-
-                //send TX-Packet
 
                 //update time
                 inc_prd(&nxtprd,sender->cnfg_optns.intrvl_ns);
@@ -262,8 +342,8 @@ int main(int argc, char* argv[])
 
         //start rt-thread   
         /* Create a pthread with specified attributes */
-  //      ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, NULL);
-        rt_thrd((void*)&sender);
+        ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, (void*)&sender);
+  //      rt_thrd((void*)&sender);
         if (ok) {
                 printf("create pthread failed\n");
                 //cleanup
@@ -280,7 +360,14 @@ int main(int argc, char* argv[])
 
         //start pmc-thread
 
+        //wait until run is changed? Check how such programms are generally stopped
+        while(run){
+                sleep(10);
+        }
+
         // cleanup
+        ok = pthread_cancel(sender.rt_thrd);
+        //maybe need to wait until thread has ended?
         ok = cleanup(&sender);
 
         return 0;       //succeded
