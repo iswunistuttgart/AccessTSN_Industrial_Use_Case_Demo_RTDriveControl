@@ -109,7 +109,7 @@ void clc_est(const struct timespec *curtm, const struct timespec *basetm, uint32
 
         //check if basetime still in in the future
         tm = *curtm;
-        inc_prd(&tm,intrvl);
+        inc_tm(&tm,intrvl);
         if(cmptmspc_Ab4rB(&tm,basetm)){
                 est->tv_sec = basetm->tv_sec;
                 est->tv_nsec = basetm->tv_nsec;

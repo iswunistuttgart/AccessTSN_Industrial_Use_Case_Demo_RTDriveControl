@@ -91,8 +91,8 @@ static void usage(char *appname)
                 " -z [IP-address]      Destination IP-address of Z-axis (use dot-notation)\n"
                 " -s [IP-address]      Destination IP-address of spindle (use dot-notation)\n"
                 " -t [value]           Specifies update-period in microseconds. Default 10 seconds.\n"
-                " -so [nanosec]        Specififes the sending offset, time between start of cycle and sending slot in nano seconds.\n"
-                " -ro [nanosec]        Specififes the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
+                " -o [nanosec]        Specififes the sending offset, time between start of cycle and sending slot in nano seconds.\n"
+                " -r [nanosec]        Specififes the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
                 " -h                   Prints this help message and exits\n"
                 "\n",
                 appname);
@@ -104,7 +104,7 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         int c;
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b:so:ro:"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspec(atof(optarg), &(sender->cnfg_optns.basetm));
@@ -112,10 +112,10 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
                 case 't':
                         (*sender).cnfg_optns.intrvl_ns = atoi(optarg)*1000;
                         break;
-                case 'so':
+                case 'o':
                         (*sender).cnfg_optns.sndoffst = atoi(optarg);
                         break;
-                case 'ro':
+                case 'r':
                         (*sender).cnfg_optns.rcvoffst = atoi(optarg);
                         break;
                 case 'h':
