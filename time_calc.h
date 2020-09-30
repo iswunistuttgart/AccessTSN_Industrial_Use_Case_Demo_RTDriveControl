@@ -26,8 +26,11 @@ uint64_t cnvrt_tmspc2uatm(struct timespec orgtm);
 /* convert ua-time to timespec */
 struct timespec cnvrt_uatm2tmspc(uint64_t orgtm);
 
-/* increase period by timeinterval */
-void inc_prd(struct timespec *prd, uint32_t intrvl);
+/* increase time by timeinterval */
+void inc_tm(struct timespec *tm, uint32_t intrvl);
+
+/* decrease time by timeinterval */
+void dec_tm(struct timespec *tm, uint32_t intrvl);
 
 /* convert timespec to uint64 (in nanosec) */
 uint64_t cnvrt_tmspec2int64(struct timespec *orgtm);
@@ -49,5 +52,14 @@ void tmspc_sub(struct timespec *res, const struct timespec *A, const struct time
 
 /* calc epoch start time */
 void clc_est(const struct timespec *curtm, const struct timespec *basetm, uint32_t intrvl, struct timespec *est);
+
+/* calc next txtime a.k.a. when the next send frame should leave the network interface */
+struct timespec clc_txtm(const struct timespec * est, uint32_t sndoffst, uint32_t sndstckclc);
+
+/* calc the wakeup time for the sending thread */
+struct timespec clc_sndwkuptm(const struct timespec *txtime, uint32_t sndappclc, uint32_t maxwkupjttr);
+
+/* calc the wakeup time for the receiving thread */
+struct timespec clc_rcvwkuptm(const struct timespec * est, uint32_t rcvoffst, uint32_t rcvstckclc, uint32_t rcvappclc, uint32_t maxwkupjttr);
 
 #endif /* _TIME_CALC_H_ */

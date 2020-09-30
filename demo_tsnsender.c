@@ -268,7 +268,7 @@ void *rt_thrd(void *tsnsender)
                 //send TX-Packet
 
                 //update time
-                inc_prd(&nxtprd,sender->cnfg_optns.intrvl_ns);
+                inc_tm(&nxtprd,sender->cnfg_optns.intrvl_ns);
 
                 //sleep until the next cycle
                 clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
@@ -307,7 +307,7 @@ void *rx_thrd(void *tsnsender)
                 //write RX values to shared memory
 
                 //update time
-                inc_prd(&nxtprd,sender->cnfg_optns.intrvl_ns);
+                inc_tm(&nxtprd,sender->cnfg_optns.intrvl_ns);
 
                 //sleep until the next cycle
                 clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);

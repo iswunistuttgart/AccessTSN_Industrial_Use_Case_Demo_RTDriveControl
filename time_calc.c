@@ -32,16 +32,27 @@ struct timespec cnvrt_uatm2tmspc(uint64_t orgtm)
         return newtm;
 }
 
-//increase period by timeinterval
-void inc_prd(struct timespec *prd, uint32_t intrvl)
+/*increase time by timeinterval*/
+void inc_tm(struct timespec *tm, uint32_t intrvl)
 {
-        prd->tv_nsec += intrvl;
+        tm->tv_nsec += intrvl;
  
-        while (prd->tv_nsec >= NSEC_IN_SEC) {
+        while (tm->tv_nsec >= NSEC_IN_SEC) {
                 //timespec nsec overflow
-                prd->tv_sec++;
-                prd->tv_nsec -= NSEC_IN_SEC;
+                tm->tv_sec++;
+                tm->tv_nsec -= NSEC_IN_SEC;
         }
+}
+
+/* decrease time by timeinterval */
+void dec_tm(struct timespec *tm, uint32_t intrvl)
+{
+        while (intrvl > tm->tv_nsec) {
+                //timespec nsec overflow
+                tm->tv_sec--;
+                tm->tv_nsec += NSEC_IN_SEC;
+        }
+        tm->tv_nsec -= intrvl;
 }
 
 uint64_t cnvrt_tmspec2int64(struct timespec *orgtm)
@@ -114,4 +125,39 @@ void clc_est(const struct timespec *curtm, const struct timespec *basetm, uint32
         tm_ns = cycl*intrvl;
         cnvrt_int642tmspec(tm_ns,&tm);
         tmspc_add(est,basetm,&tm);
+}
+
+/* calc next txtime a.k.a. when the next send frame should leave the network interface */
+struct timespec clc_txtm(const struct timespec * est, uint32_t sndoffst, uint32_t sndstckclc)
+{
+        struct timespec txtime;
+        txtime.tv_nsec = 0;
+        txtime.tv_sec = 0;
+        tmspc_add(&txtime,&txtime, est);
+        inc_tm(&txtime,sndoffst);
+        dec_tm(&txtime,sndstckclc);
+        return(txtime);
+}
+
+/* calc the wakeup time for the sending thread */
+struct timespec clc_sndwkuptm(const struct timespec *txtime, uint32_t sndappclc, uint32_t maxwkupjttr)
+{
+        struct timespec sndwkuptm;
+        sndwkuptm.tv_sec = 0;
+        sndwkuptm.tv_nsec = 0;
+        tmspc_add(&sndwkuptm,&sndwkuptm,txtime);
+        dec_tm(&sndwkuptm,sndappclc+maxwkupjttr);
+        return(sndwkuptm);
+}
+
+/* calc the wakeup time for the receiving thread */
+struct timespec clc_rcvwkuptm(const struct timespec * est, uint32_t rcvoffst, uint32_t rcvstckclc, uint32_t rcvappclc, uint32_t maxwkupjttr)
+{
+        struct timespec rcvwkuptm;
+        rcvwkuptm.tv_sec = 0;
+        rcvwkuptm.tv_nsec = 0;
+        tmspc_add(&rcvwkuptm,&rcvwkuptm,est);
+        inc_tm(&rcvwkuptm,rcvoffst+rcvstckclc+maxwkupjttr);
+        dec_tm(&rcvwkuptm,rcvappclc);
+        return(rcvwkuptm);
 }
