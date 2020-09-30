@@ -29,13 +29,21 @@
 #include <time.h>
 #include "packet_handler.h"
 
+//parameters whcih are fixed at compile time, all values in nano seconds
+#define SENDINGSTACK_DURATION 100000 
+#define RECEIVINGSTACK_DURATION 100000
+#define APPSENDWAKEUP 100000
+#define APPRECVWAKEUP 100000
+#define MAXWAKEUPJITTER 40000
+
 
 uint8_t run = 1;
 
 struct cnfg_optns_t{
         struct timespec basetm;
         uint32_t intrvl_ns;
-
+        uint32_t sndoffst;
+        uint32_t rcvoffst;
 };
 
 struct tsnsender_t {
@@ -83,6 +91,8 @@ static void usage(char *appname)
                 " -z [IP-address]      Destination IP-address of Z-axis (use dot-notation)\n"
                 " -s [IP-address]      Destination IP-address of spindle (use dot-notation)\n"
                 " -t [value]           Specifies update-period in microseconds. Default 10 seconds.\n"
+                " -so [nanosec]        Specififes the sending offset, time between start of cycle and sending slot in nano seconds.\n"
+                " -ro [nanosec]        Specififes the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
                 " -h                   Prints this help message and exits\n"
                 "\n",
                 appname);
@@ -94,13 +104,19 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         int c;
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b:"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:so:ro:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspec(atof(optarg), &(sender->cnfg_optns.basetm));
                         break;
                 case 't':
                         (*sender).cnfg_optns.intrvl_ns = atoi(optarg)*1000;
+                        break;
+                case 'so':
+                        (*sender).cnfg_optns.sndoffst = atoi(optarg);
+                        break;
+                case 'ro':
+                        (*sender).cnfg_optns.rcvoffst = atoi(optarg);
                         break;
                 case 'h':
                 default:
@@ -242,15 +258,22 @@ int cleanup(struct tsnsender_t *sender)
 void *rt_thrd(void *tsnsender)
 {
 	const struct tsnsender_t *sender = (const struct tsnsender_t *) tsnsender;
-        struct timespec nxtprd;
+        struct timespec est;
+        struct timespec wkupsndtm;
+        struct timespec txtime;
+        
         struct timespec curtm;
 	                
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods) */
-        clock_gettime(CLOCK_TAI,&curtm);
-        clc_est(&curtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &nxtprd);
-        clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
-        //TODO define how this timestamp is interpredet as TXTIME or Wakeuptime for application, resulting offset needs to be added
+        clock_gettime(CLOCK_TAI,&wkupsndtm);
+        clc_est(&wkupsndtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &est);      //check if added period is enough time buffer, maybe increase to two
+        txtime = clc_txtm(&est,sender->cnfg_optns.sndoffst,SENDINGSTACK_DURATION);
+        wkupsndtm = clc_sndwkuptm(&txtime,APPSENDWAKEUP,MAXWAKEUPJITTER);
+
+        //sleep till first wakeup time
+        clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkupsndtm, NULL);
+        
 	int cyclecnt =0;
         //while loop
         while(cyclecnt < 10000){
@@ -263,15 +286,16 @@ void *rt_thrd(void *tsnsender)
 
                 //create TX-Packet
                 
-                //calculate TxTime-Stamp
-
                 //send TX-Packet
 
                 //update time
-                inc_tm(&nxtprd,sender->cnfg_optns.intrvl_ns);
+                inc_tm(&est,sender->cnfg_optns.intrvl_ns);
+                //calculate next TxTime-Stamp and next wakeuptime
+                txtime = clc_txtm(&est,sender->cnfg_optns.sndoffst,SENDINGSTACK_DURATION);
+                wkupsndtm = clc_sndwkuptm(&txtime,APPSENDWAKEUP,MAXWAKEUPJITTER);
 
                 //sleep until the next cycle
-                clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
+                clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkupsndtm, NULL);
         }
 
         return NULL;
@@ -281,17 +305,19 @@ void *rt_thrd(void *tsnsender)
 void *rx_thrd(void *tsnsender)
 {
 	const struct tsnsender_t *sender = (const struct tsnsender_t *) tsnsender;
-        struct timespec nxtprd;
+        struct timespec est;
+        struct timespec wkuprcvtm;
         struct timespec curtm;
 	
                 
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods), calculated fitting offset to recv */
-        //****TODO get offset for calcultaion right
-        clock_gettime(CLOCK_TAI,&curtm);
-        clc_est(&curtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &nxtprd);
-        clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
-        //TODO define how this timestamp is interpredet as TXTIME or Wakeuptime for application, resulting offset needs to be added
+        clock_gettime(CLOCK_TAI,&wkuprcvtm);
+        clc_est(&wkuprcvtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &est);
+        wkuprcvtm = clc_rcvwkuptm(&est,sender->cnfg_optns.rcvoffst,RECEIVINGSTACK_DURATION,APPRECVWAKEUP,MAXWAKEUPJITTER);
+        //sleep till first wakeup time
+        clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
+        
 	int cyclecnt =0;
         //while loop
         while(cyclecnt < 10000){
@@ -307,10 +333,16 @@ void *rx_thrd(void *tsnsender)
                 //write RX values to shared memory
 
                 //update time
-                inc_tm(&nxtprd,sender->cnfg_optns.intrvl_ns);
+                /* can be done more simple when recv_offset cannot change during operation
+                inc_tm(&est,sender->cnfg_optns.intrvl_ns);
+                //calculate next wakeuptime
+                wkuprcvtm = clc_rcvwkuptm(&est,sender->cnfg_optns.rcvoffst,RECEIVINGSTACK_DURATION,APPRECVWAKEUP,MAXWAKEUPJITTER);
+                */
+                //more simple
+                inc_tm(&wkuprcvtm,sender->cnfg_optns.intrvl_ns);
 
                 //sleep until the next cycle
-                clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &nxtprd, NULL);
+                clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
         }
 
         return NULL;
