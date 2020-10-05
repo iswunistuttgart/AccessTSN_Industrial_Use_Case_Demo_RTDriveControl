@@ -133,6 +133,7 @@ int opntxsckt(void)
                 return sckt;      //fail
         const int on = 1;
         setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&on,sizeof(on));
+        //maybe need to set SO_BROADCAST also
         return sckt;
 }
 
@@ -311,7 +312,7 @@ void *rt_thrd(void *tsnsender)
                 //get TX values from shared memory
 
                 //get and fill TX-Packet
-                ok = getfreepkt(&(sender->pkts),snd_pkt);
+                ok = getfreepkt(&(sender->pkts),snd_pkt);       //maybe change to one static packet in thread to avoid competing access to paket store from rx and tx threads
                 if (ok == 1){
                         printf("Could not get free packet for sending. \n");
                         return NULL;       //fail
@@ -328,6 +329,9 @@ void *rt_thrd(void *tsnsender)
                 ok += sendpkt(sender->txsckt,snd_pkt->sktbf,snd_pkt->len,&snd_msghdr);
                 if (0 == ok)
                         snd_seqno++;    //sending packet succeded
+
+                //return packet to store
+                ok += retusedpkt(&(sender->pkts),snd_pkt);
 
                 //update time
                 inc_tm(&est,sender->cnfg_optns.intrvl_ns);
