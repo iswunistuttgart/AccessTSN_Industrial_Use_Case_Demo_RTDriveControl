@@ -33,13 +33,13 @@ void inc_tm(struct timespec *tm, uint32_t intrvl);
 void dec_tm(struct timespec *tm, uint32_t intrvl);
 
 /* convert timespec to uint64 (in nanosec) */
-uint64_t cnvrt_tmspec2int64(struct timespec *orgtm);
+uint64_t cnvrt_tmspc2int64(struct timespec *orgtm);
 
 /* convert uint64 (nanosec) to timespec */
-void cnvrt_int642tmspec(uint64_t orgtm, struct timespec *newtm);
+void cnvrt_int642tmspc(uint64_t orgtm, struct timespec *newtm);
 
 /* convert double (sec) to timespec */
-void cnvrt_dbl2tmspec(double orgtm, struct timespec *newtm);
+void cnvrt_dbl2tmspc(double orgtm, struct timespec *newtm);
 
 /* compare two timespecs */
 bool cmptmspc_Ab4rB(const struct timespec *A, const struct timespec *B);

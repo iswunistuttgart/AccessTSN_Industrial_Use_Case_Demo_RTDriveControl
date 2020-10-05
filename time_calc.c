@@ -55,18 +55,18 @@ void dec_tm(struct timespec *tm, uint32_t intrvl)
         tm->tv_nsec -= intrvl;
 }
 
-uint64_t cnvrt_tmspec2int64(struct timespec *orgtm)
+uint64_t cnvrt_tmspc2int64(struct timespec *orgtm)
 {
         return orgtm->tv_sec * NSEC_IN_SEC + orgtm->tv_nsec;
 }
 
-void cnvrt_int642tmspec(uint64_t orgtm, struct timespec *newtm)
+void cnvrt_int642tmspc(uint64_t orgtm, struct timespec *newtm)
 {
         newtm->tv_nsec = (uint32_t)(orgtm % NSEC_IN_SEC);
         newtm->tv_sec = orgtm / NSEC_IN_SEC;
 }
 
-void cnvrt_dbl2tmspec(double orgtm, struct timespec *newtm)
+void cnvrt_dbl2tmspc(double orgtm, struct timespec *newtm)
 {
         newtm->tv_sec = (time_t)orgtm;
         newtm->tv_nsec = (orgtm - newtm->tv_sec)* NSEC_IN_SEC;
@@ -119,11 +119,11 @@ void clc_est(const struct timespec *curtm, const struct timespec *basetm, uint32
         //calculate epoch start time since basetime is in the past
         //calc cycles sind basetime
         tmspc_sub(&tm,curtm,basetm);
-        tm_ns = cnvrt_tmspec2int64(&tm);
+        tm_ns = cnvrt_tmspc2int64(&tm);
         cycl = tm_ns/intrvl + 1;        //increase by one to account for fraction
         //cals est from cycles and basetime
         tm_ns = cycl*intrvl;
-        cnvrt_int642tmspec(tm_ns,&tm);
+        cnvrt_int642tmspc(tm_ns,&tm);
         tmspc_add(est,basetm,&tm);
 }
 
