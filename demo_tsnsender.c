@@ -44,14 +44,12 @@ struct cnfg_optns_t{
         uint32_t intrvl_ns;
         uint32_t sndoffst;
         uint32_t rcvoffst;
+        uint8_t * dstaddr;
+        char * ifname;
 };
 
 struct tsnsender_t {
         struct cnfg_optns_t cnfg_optns;
-        uint32_t dstaddrx;
-        uint32_t dstaddry;
-        uint32_t dstaddrz;
-        uint32_t dstaddrs;
         int rxsckt;
         int txsckt;
         struct mk_mainoutput *txshm;
@@ -107,7 +105,7 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         while (EOF != (c = getopt(argc,argv,"ht:b:o:r:"))) {
                 switch(c) {
                 case 'b':
-                        cnvrt_dbl2tmspec(atof(optarg), &(sender->cnfg_optns.basetm));
+                        cnvrt_dbl2tmspc(atof(optarg), &(sender->cnfg_optns.basetm));
                         break;
                 case 't':
                         (*sender).cnfg_optns.intrvl_ns = atoi(optarg)*1000;
@@ -127,8 +125,18 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         }
 }
 
-// open socket
-// close socket
+// open tx socket
+int opntxsckt(void)
+{
+        int sckt = socket(AF_PACKET,SOCK_RAW,ETHERTYPE);
+        if (sckt < 0)
+                return sckt;      //fail
+        const int on = 1;
+        setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&on,sizeof(on));
+        return sckt;
+}
+
+// open rx socket
 
 //initialization
 int init(struct tsnsender_t *sender)
@@ -136,6 +144,12 @@ int init(struct tsnsender_t *sender)
         int ok = 0;
         struct sched_param param;
         //open send socket
+        sender->txsckt = opntxsckt();
+        if (sender->txsckt < 0) {
+                printf("TX Socket open failed. \n");
+                sender->txsckt = 0;
+                return 1;
+        }
 
         //open recv socket
 
@@ -241,10 +255,13 @@ int cleanup(struct tsnsender_t *sender)
 {
         int ok = 0;
         //stop threads
+        ok = pthread_cancel(sender->rt_thrd);
+        //maybe need to wait until thread has ended?
 
         //close rx socket
-
+        
         //close tx socket
+        ok += close(sender->txsckt);
 
         //close shared memory
 
@@ -257,12 +274,21 @@ int cleanup(struct tsnsender_t *sender)
 //Real time thread sender
 void *rt_thrd(void *tsnsender)
 {
-	const struct tsnsender_t *sender = (const struct tsnsender_t *) tsnsender;
+	int ok;
+        struct tsnsender_t *sender = (struct tsnsender_t *) tsnsender;
         struct timespec est;
         struct timespec wkupsndtm;
         struct timespec txtime;
+        struct rt_pkt_t *snd_pkt;
+        struct sockaddr_ll snd_addr;
+        struct msghdr snd_msghdr;
+        struct cntrlnfo_t snd_cntrlnfo;
+        uint16_t snd_seqno = 0;
         
         struct timespec curtm;
+
+        //init sending address since it will be static
+        ok = fillethaddr(&snd_addr, sender->cnfg_optns.dstaddr, ETHERTYPE, sender->txsckt, sender->cnfg_optns.ifname);
 	                
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods) */
@@ -284,9 +310,24 @@ void *rt_thrd(void *tsnsender)
 
                 //get TX values from shared memory
 
-                //create TX-Packet
-                
+                //get and fill TX-Packet
+                ok = getfreepkt(&(sender->pkts),snd_pkt);
+                if (ok == 1){
+                        printf("Could not get free packet for sending. \n");
+                        return NULL;       //fail
+                }
+                ok += setpkt(snd_pkt,1,CNTRL);
+                ok += fillcntrlpkt(snd_pkt,&snd_cntrlnfo,snd_seqno);
+                ok += fillmsghdr(&snd_msghdr,&snd_addr,cnvrt_tmspc2int64(&txtime),CLOCK_TAI);
+                if (ok != 0){
+                        printf("Error in filling sending packet or corresponding headers.\n");
+                        return NULL;       //fail
+                }
+                               
                 //send TX-Packet
+                ok += sendpkt(sender->txsckt,snd_pkt->sktbf,snd_pkt->len,&snd_msghdr);
+                if (0 == ok)
+                        snd_seqno++;    //sending packet succeded
 
                 //update time
                 inc_tm(&est,sender->cnfg_optns.intrvl_ns);
@@ -398,8 +439,6 @@ int main(int argc, char* argv[])
         }
 
         // cleanup
-        ok = pthread_cancel(sender.rt_thrd);
-        //maybe need to wait until thread has ended?
         ok = cleanup(&sender);
 
         return 0;       //succeded
