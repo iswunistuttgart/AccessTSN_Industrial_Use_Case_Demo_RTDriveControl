@@ -84,13 +84,11 @@ static void usage(char *appname)
         fprintf(stderr,
                 "\n"
                 "Usage: %s [options]\n"
-                " -x [IP-address]      Destination IP-address of X-axis (use dot-notation)\n"
-                " -y [IP-address]      Destination IP-address of Y-axis (use dot-notation)\n"
-                " -z [IP-address]      Destination IP-address of Z-axis (use dot-notation)\n"
-                " -s [IP-address]      Destination IP-address of spindle (use dot-notation)\n"
                 " -t [value]           Specifies update-period in microseconds. Default 10 seconds.\n"
-                " -o [nanosec]        Specififes the sending offset, time between start of cycle and sending slot in nano seconds.\n"
-                " -r [nanosec]        Specififes the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
+                " -b [value]           Specifies the basetime (the start of the cycle). This is a Unix-Timestamp.\n"
+                " -o [nanosec]         Specififes the sending offset, time between start of cycle and sending slot in nano seconds.\n"
+                " -r [nanosec]         Specififes the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
+                " -i                   Name of the Networkinterface to use.\n"
                 " -h                   Prints this help message and exits\n"
                 "\n",
                 appname);
@@ -102,7 +100,7 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         int c;
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:i:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspc(atof(optarg), &(sender->cnfg_optns.basetm));
@@ -116,6 +114,9 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
                 case 'r':
                         (*sender).cnfg_optns.rcvoffst = atoi(optarg);
                         break;
+                case 'i':
+                        (*sender).cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
+                        strcpy((*sender).cnfg_optns.ifname,optarg);
                 case 'h':
                 default:
                         usage(appname);
@@ -400,6 +401,8 @@ int main(int argc, char* argv[])
         int ok;
 
         //set standard values
+        sender.cnfg_optns.dstaddr = calloc(ETH_ALEN,sizeof(uint8_t));
+        *(sender.cnfg_optns.dstaddr) = DSTADDRCNTRL;
         
         //parse CLI arguments
         evalCLI(argc,argv,&sender);

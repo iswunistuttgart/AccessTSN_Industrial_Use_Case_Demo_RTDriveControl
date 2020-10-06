@@ -39,11 +39,11 @@
 #define WRITERID_AXZ 0xAC03
 #define WRITERID_AXS 0xAC04
 
-#define DSTADDRCNTRL {0x01,0xAC,0xCE,0x55,0x00,0x00}    //Ehternet Multicast-Address the Control should sent to
-#define DSTADDRAXSX  {0x01,0xAC,0xCE,0x55,0x00,0x01}    //Ehternet Multicast-Address x-Axis should sent to
-#define DSTADDRAXSY  {0x01,0xAC,0xCE,0x55,0x00,0x02}    //Ehternet Multicast-Address y-Axis should sent to
-#define DSTADDRAXSZ  {0x01,0xAC,0xCE,0x55,0x00,0x03}    //Ehternet Multicast-Address z-Axis should sent to
-#define DSTADDRAXSS  {0x01,0xAC,0xCE,0x55,0x00,0x04}    //Ehternet Multicast-Address the Spindle should sent to
+#define DSTADDRCNTRL 0x01ACCE550000LL    //Ethernet Multicast-Address the Control should sent to
+#define DSTADDRAXSX  DSTADDRCNTRL + 1    //Ethernet Multicast-Address x-Axis should sent to
+#define DSTADDRAXSY  DSTADDRCNTRL + 2    //Ethernet Multicast-Address y-Axis should sent to
+#define DSTADDRAXSZ  DSTADDRCNTRL + 3    //Ethernet Multicast-Address z-Axis should sent to
+#define DSTADDRAXSS  DSTADDRCNTRL + 4    //Ethernet Multicast-Address the Spindle should sent to
 
 #define ETHERTYPE 0xB62C        //Ethertype for OPC UA UADP NetworkMessages over Ethernet II
 
