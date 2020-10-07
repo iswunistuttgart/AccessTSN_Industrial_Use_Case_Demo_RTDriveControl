@@ -24,6 +24,8 @@ void initpkthdrs(struct rt_pkt_t* pkt)
 int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
 {
         uint16_t dtstmsgsz = 0;
+        int msgfldsz;
+        int msgfldcnt;
         memset(pkt->sktbf,0,MAXPKTSZ*sizeof(char));
         pkt->eth_hdr = NULL; //pkt->sktbf;
         pkt->ip_hdr = NULL;
@@ -32,38 +34,48 @@ int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
         pkt->grp_hdr = (struct grp_hdr_t*) ((char *) pkt->ntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
         pkt->pyld_hdr = (struct pyld_hdr_t*) ((char *) pkt->grp_hdr + sizeof(struct grp_hdr_t));
         pkt->pyld_hdr->msgcnt = msgcnt;
-        pkt->extntwrkmsg_hdr = (struct extntwrkmsg_hdr_t*) ((char *) pkt->pyld_hdr + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)));
-        pkt->szrry = (struct szrry_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
-        
+        pkt->extntwrkmsg_hdr = (struct extntwrkmsg_hdr_t*) ((char *) pkt->pyld_hdr + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(/**(pkt->pyld_hdr->wrtrId)*/uint16_t));
+        if (msgcnt < 2){
+                //for msgcnt = 1, sizearray is ommitted
+                pkt->szrry = NULL;
+                msgfldsz = 0;
+                msgfldcnt = 0;
+        } else {
+                //for msgcnt >1, set sizes of datasetmessages in sizearray
+                pkt->szrry = (struct szrry_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
+                msgfldsz = msgcnt*sizeof(*(pkt->szrry));
+                msgfldcnt = msgcnt;
+        }
+        pkt->dtstmsg = (union dtstmsg_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t) + msgfldsz);
+        int i = 0;
         switch(msgtyp){
         case CNTRL:
-                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)) + (msgcnt - 1)*sizeof(*(pkt->szrry)) + msgcnt*sizeof(struct dtstmsg_cntrl_t);
-                pkt->dtstmsg->dtstmsg_cntrl = (struct dtstmsg_cntrl_t*) ((char *) pkt->szrry + (msgcnt - 1)*sizeof(*(pkt->szrry)));
+                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)) + msgfldsz + msgcnt*sizeof(struct dtstmsg_cntrl_t);
                 dtstmsgsz = sizeof(struct dtstmsg_cntrl_t);
-                pkt->dtstmsg->dtstmsg_cntrl->dtstmsg_hdr = 0x01;
-                pkt->dtstmsg->dtstmsg_cntrl->fldcnt = 11;
+                while(i<msgcnt) {
+                        pkt->dtstmsg[i].dtstmsg_cntrl.dtstmsg_hdr = 0x01;
+                        pkt->dtstmsg[i].dtstmsg_cntrl.fldcnt = 11;
+                        i++;
+                }
                 break;
         case AXS:
-                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)) + (msgcnt - 1)*sizeof(*(pkt->szrry)) + msgcnt*sizeof(struct dtstmsg_axs_t);
-                pkt->dtstmsg->dtstmsg_axs = (struct dtstmsg_axs_t*) ((char *) pkt->szrry + (msgcnt - 1)*sizeof(*(pkt->szrry)));
+                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)) + msgfldsz + msgcnt*sizeof(struct dtstmsg_axs_t);
                 dtstmsgsz = sizeof(struct dtstmsg_axs_t);
-                pkt->dtstmsg->dtstmsg_axs->dtstmsg_hdr = 0x01;
-                pkt->dtstmsg->dtstmsg_axs->fldcnt = 2;
+                while(i<msgcnt) {
+                        pkt->dtstmsg[i].dtstmsg_axs.dtstmsg_hdr = 0x01;
+                        pkt->dtstmsg[i].dtstmsg_axs.fldcnt = 2;
+                        i++;
+                }
                 break;
         default:
                 return 1;       //fail
         };
-        int i = 0;
-        if (msgcnt < 2){
-                //for msgcnt = 1, sizearray is ommitted
-                pkt->szrry = NULL;
-        } else {
-                //for msgcnt >1, set sizes of datasetmessages in sizearray
-                while (i <msgcnt) {
-                        *(pkt->szrry->size + i) = dtstmsgsz;
-                        i++;
-                }
+        i = 0;
+        while (i <msgfldcnt) {
+                *(&(pkt->szrry->size) + i) = dtstmsgsz;
+                i++;
         }
+        
         
         initpkthdrs(pkt);
         
@@ -116,22 +128,25 @@ int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seq
         struct timespec time;
         int ok = 0;
         pkt->grp_hdr->seqNo = seqno;
-        *(pkt->pyld_hdr->wrtrId) = WRITERID_CNTRL;
+        //check for current limitation that only one control message is supported
+        if(pkt->pyld_hdr->msgcnt != 1)
+                return 1; //fail
+        pkt->pyld_hdr->wrtrId[0] = WRITERID_CNTRL;
         ok += dbl2nint64(cntrlnfo->x_set.cntrlvl,&tmp);
-        pkt->dtstmsg->dtstmsg_cntrl->xvel_set = htobe64(tmp);
-        pkt->dtstmsg->dtstmsg_cntrl->xenable = (uint8_t) cntrlnfo->x_set.cntrlsw;
+        pkt->dtstmsg[0].dtstmsg_cntrl.xvel_set = htobe64(tmp);
+        pkt->dtstmsg[0].dtstmsg_cntrl.xenable = (uint8_t) cntrlnfo->x_set.cntrlsw;
         ok += dbl2nint64(cntrlnfo->y_set.cntrlvl,&tmp);
-        pkt->dtstmsg->dtstmsg_cntrl->yvel_set = htobe64(tmp);
-        pkt->dtstmsg->dtstmsg_cntrl->yenable = (uint8_t) cntrlnfo->y_set.cntrlsw;
+        pkt->dtstmsg[0].dtstmsg_cntrl.yvel_set = htobe64(tmp);
+        pkt->dtstmsg[0].dtstmsg_cntrl.yenable = (uint8_t) cntrlnfo->y_set.cntrlsw;
         ok += dbl2nint64(cntrlnfo->z_set.cntrlvl,&tmp);
-        pkt->dtstmsg->dtstmsg_cntrl->zvel_set = htobe64(tmp);
-        pkt->dtstmsg->dtstmsg_cntrl->zenable = (uint8_t) cntrlnfo->z_set.cntrlsw;
+        pkt->dtstmsg[0].dtstmsg_cntrl.zvel_set = htobe64(tmp);
+        pkt->dtstmsg[0].dtstmsg_cntrl.zenable = (uint8_t) cntrlnfo->z_set.cntrlsw;
         ok += dbl2nint64(cntrlnfo->s_set.cntrlvl,&tmp);
-        pkt->dtstmsg->dtstmsg_cntrl->spindlespeed = htobe64(tmp);
-        pkt->dtstmsg->dtstmsg_cntrl->spindleenable = (uint8_t) cntrlnfo->s_set.cntrlsw;
-        pkt->dtstmsg->dtstmsg_cntrl->spindlebrake = (uint8_t) cntrlnfo->spindlebrake;
-        pkt->dtstmsg->dtstmsg_cntrl->machinestatus = (uint8_t) cntrlnfo->machinestatus;
-        pkt->dtstmsg->dtstmsg_cntrl->estopstatus = (uint8_t) cntrlnfo->estopstatus;
+        pkt->dtstmsg[0].dtstmsg_cntrl.spindlespeed = htobe64(tmp);
+        pkt->dtstmsg[0].dtstmsg_cntrl.spindleenable = (uint8_t) cntrlnfo->s_set.cntrlsw;
+        pkt->dtstmsg[0].dtstmsg_cntrl.spindlebrake = (uint8_t) cntrlnfo->spindlebrake;
+        pkt->dtstmsg[0].dtstmsg_cntrl.machinestatus = (uint8_t) cntrlnfo->machinestatus;
+        pkt->dtstmsg[0].dtstmsg_cntrl.estopstatus = (uint8_t) cntrlnfo->estopstatus;
 
         clock_gettime(CLOCK_TAI,&time);
         pkt->extntwrkmsg_hdr->timestamp = cnvrt_tmspc2uatm(time);
@@ -216,9 +231,11 @@ int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime
 int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr)
 {
         int sndcnt;
+        struct iovec msg_iov;
         if(NULL == msg_hdr)
                 return 1;       //fail
 
+        msg_hdr->msg_iov = &msg_iov;
         msg_hdr->msg_iov->iov_base = buf;
         msg_hdr->msg_iov->iov_len = buflen;
         msg_hdr->msg_iovlen = 1;
@@ -278,15 +295,15 @@ int destroypktstrg(struct pktstore_t  *pktstore)
         return 0;
 }
 
-int getfreepkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt)
+int getfreepkt(struct pktstore_t *pktstore, struct rt_pkt_t** pkt)
 {
         if(NULL == pktstore)
                 return 1;       //fail
-        pkt = NULL;
+        *pkt = NULL;
         int i = 0;
         while(i < pktstore->size) {
                 if(pktstore->pktstrelmt[i].used == false){
-                        pkt = pktstore->pktstrelmt[i].pkt;
+                        *pkt = pktstore->pktstrelmt[i].pkt;
                         pktstore->pktstrelmt[i].used = true;
                         i = pktstore->size;
                 } else {
@@ -294,26 +311,26 @@ int getfreepkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt)
                 }
                 
         }
-        if(NULL == pkt)
+        if(NULL == *pkt)
                 return 1;       //fail
         return 0;       //succeded
 }
 
-int retusedpkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt)
+int retusedpkt(struct pktstore_t *pktstore, struct rt_pkt_t** pkt)
 {
         if((NULL == pktstore) || (NULL == pkt))
                 return 1;       //fail
         int i = 0;
         while(i < pktstore->size) {
-                if(pktstore->pktstrelmt[i].pkt == pkt){
+                if(pktstore->pktstrelmt[i].pkt == *pkt){
                         pktstore->pktstrelmt[i].used = false;
                         i = pktstore->size;
-                        pkt = NULL;
+                        *pkt = NULL;
                 } else {
                         i++;
                 }
         }
-        if(NULL != pkt)
+        if(NULL != *pkt)
                 return 1;       //fail
         return 1;       //succeded
 }

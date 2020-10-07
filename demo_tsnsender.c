@@ -314,7 +314,7 @@ void *rt_thrd(void *tsnsender)
                 //get TX values from shared memory
 
                 //get and fill TX-Packet
-                ok = getfreepkt(&(sender->pkts),snd_pkt);       //maybe change to one static packet in thread to avoid competing access to paket store from rx and tx threads
+                ok = getfreepkt(&(sender->pkts),&snd_pkt);       //maybe change to one static packet in thread to avoid competing access to paket store from rx and tx threads
                 if (ok == 1){
                         printf("Could not get free packet for sending. \n");
                         return NULL;       //fail
@@ -333,7 +333,7 @@ void *rt_thrd(void *tsnsender)
                         snd_seqno++;    //sending packet succeded
 
                 //return packet to store
-                ok += retusedpkt(&(sender->pkts),snd_pkt);
+                ok += retusedpkt(&(sender->pkts),&snd_pkt);
 
                 //update time
                 inc_tm(&est,sender->cnfg_optns.intrvl_ns);
@@ -427,6 +427,8 @@ int main(int argc, char* argv[])
         //register signal handlers
         signal(SIGTERM, sigfunc);
         signal(SIGINT, sigfunc);
+
+        //rt_thrd(&sender);
 
         //start rt-thread   
         /* Create a pthread with specified attributes */

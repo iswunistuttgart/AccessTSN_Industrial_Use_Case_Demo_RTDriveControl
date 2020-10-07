@@ -27,6 +27,8 @@
 #include "datastructs.h"
 #include "time_calc.h"
 
+//#define SO_TXTIME 63
+//#define SCM_TXTIME SO_TXTIME
 /* Defines for configurable header values */
 
 #define WGRPID 0x1000
@@ -40,10 +42,10 @@
 #define WRITERID_AXS 0xAC04
 
 #define DSTADDRCNTRL 0x01ACCE550000LL    //Ethernet Multicast-Address the Control should sent to
-#define DSTADDRAXSX  DSTADDRCNTRL + 1    //Ethernet Multicast-Address x-Axis should sent to
-#define DSTADDRAXSY  DSTADDRCNTRL + 2    //Ethernet Multicast-Address y-Axis should sent to
-#define DSTADDRAXSZ  DSTADDRCNTRL + 3    //Ethernet Multicast-Address z-Axis should sent to
-#define DSTADDRAXSS  DSTADDRCNTRL + 4    //Ethernet Multicast-Address the Spindle should sent to
+#define DSTADDRAXSX  (DSTADDRCNTRL + 1)    //Ethernet Multicast-Address x-Axis should sent to
+#define DSTADDRAXSY  (DSTADDRCNTRL + 2)    //Ethernet Multicast-Address y-Axis should sent to
+#define DSTADDRAXSZ  (DSTADDRCNTRL + 3)    //Ethernet Multicast-Address z-Axis should sent to
+#define DSTADDRAXSS  (DSTADDRCNTRL + 4)    //Ethernet Multicast-Address the Spindle should sent to
 
 #define ETHERTYPE 0xB62C        //Ethertype for OPC UA UADP NetworkMessages over Ethernet II
 
@@ -97,7 +99,7 @@ struct grp_hdr_t {
 
 struct pyld_hdr_t {
         uint8_t msgcnt;
-        uint16_t * wrtrId;
+        uint16_t wrtrId[];
 };
 
 struct extntwrkmsg_hdr_t {
@@ -105,7 +107,7 @@ struct extntwrkmsg_hdr_t {
 };
 
 struct szrry_t {
-        uint16_t * size;
+        uint16_t size;          //this is an array
 };
 
 struct dtstmsg_cntrl_t{
@@ -134,8 +136,8 @@ struct dtstmsg_axs_t {
 #pragma pack(pop)       /* reset to original alignment */
 
 union dtstmsg_t {
-        struct dtstmsg_cntrl_t* dtstmsg_cntrl;
-        struct dtstmsg_axs_t* dtstmsg_axs;
+        struct dtstmsg_cntrl_t dtstmsg_cntrl;
+        struct dtstmsg_axs_t dtstmsg_axs;
 };
 
 /* struct definition for network packet */
@@ -262,10 +264,10 @@ int initpktstrg(struct pktstore_t *pktstore, uint32_t size);
 int destroypktstrg(struct pktstore_t  *pktstore);
 
 /* gets an unused pkt from packetstore and marks it as used */
-int getfreepkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt);
+int getfreepkt(struct pktstore_t *pktstore, struct rt_pkt_t** pkt);
 
 /* returns used pkt to packetsore and marks it as free */
-int retusedpkt(struct pktstore_t *pktstore, struct rt_pkt_t* pkt);
+int retusedpkt(struct pktstore_t *pktstore, struct rt_pkt_t** pkt);
 
 /* ###### END PacketStore ##### */
 
