@@ -117,6 +117,7 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
                 case 'i':
                         (*sender).cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
                         strcpy((*sender).cnfg_optns.ifname,optarg);
+                        break;
                 case 'h':
                 default:
                         usage(appname);
@@ -402,7 +403,14 @@ int main(int argc, char* argv[])
 
         //set standard values
         sender.cnfg_optns.dstaddr = calloc(ETH_ALEN,sizeof(uint8_t));
-        *(sender.cnfg_optns.dstaddr) = DSTADDRCNTRL;
+        sender.cnfg_optns.dstaddr[0] = 0x01;
+        sender.cnfg_optns.dstaddr[1] = 0xAC;
+        sender.cnfg_optns.dstaddr[2] = 0xCE;
+        sender.cnfg_optns.dstaddr[3] = 0x55;
+        sender.cnfg_optns.dstaddr[4] = 0x00;
+        sender.cnfg_optns.dstaddr[5] = 0x00;
+        
+        printf("dstaddr: 0x%02x:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x\n",sender.cnfg_optns.dstaddr[0],sender.cnfg_optns.dstaddr[1],sender.cnfg_optns.dstaddr[2],sender.cnfg_optns.dstaddr[3],sender.cnfg_optns.dstaddr[4],sender.cnfg_optns.dstaddr[5]);
         
         //parse CLI arguments
         evalCLI(argc,argv,&sender);
