@@ -130,11 +130,11 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
 // open tx socket
 int opntxsckt(void)
 {
-        int sckt = socket(AF_PACKET,SOCK_RAW,ETHERTYPE);
+        int sckt = socket(AF_PACKET,SOCK_DGRAM,ETHERTYPE);
         if (sckt < 0)
                 return sckt;      //fail
         const int on = 1;
-        setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&on,sizeof(on));
+        //setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&on,sizeof(on));
         //maybe need to set SO_BROADCAST also
         return sckt;
 }
