@@ -99,7 +99,7 @@ struct grp_hdr_t {
 
 struct pyld_hdr_t {
         uint8_t msgcnt;
-        uint16_t wrtrId[];
+        uint16_t wrtrId;
 };
 
 struct extntwrkmsg_hdr_t {

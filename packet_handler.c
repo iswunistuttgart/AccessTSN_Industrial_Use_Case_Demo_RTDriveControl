@@ -7,6 +7,7 @@
 #include "packet_handler.h"
 #include <arpa/inet.h>
 #include <errno.h>
+#include <stdio.h>
 
 void initpkthdrs(struct rt_pkt_t* pkt)
 {
@@ -18,8 +19,8 @@ void initpkthdrs(struct rt_pkt_t* pkt)
         //TODO pkt.ntwrkmsg_hdr->pubId;
         // grp_hdr_t
         pkt->grp_hdr->grpfl = 0x0B;             //writergroupID, groupVersion and Sequencenumber enabled
-        pkt->grp_hdr->wgrpId = WGRPID;
-        pkt->grp_hdr->grpVer = GRPVER;
+        pkt->grp_hdr->wgrpId = htons(WGRPID);
+        pkt->grp_hdr->grpVer = htonl(GRPVER);
 }
 
 int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
@@ -47,24 +48,24 @@ int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
                 msgfldsz = msgcnt*sizeof(*(pkt->szrry));
                 msgfldcnt = msgcnt;
         }
-        pkt->dtstmsg = (union dtstmsg_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t) + msgfldsz);
+        pkt->dtstmsg = (union dtstmsg_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct extntwrkmsg_hdr_t) + msgfldsz);
         int i = 0;
         switch(msgtyp){
         case CNTRL:
-                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)) + msgfldsz + msgcnt*sizeof(struct dtstmsg_cntrl_t);
+                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(pkt->pyld_hdr->wrtrId) + msgfldsz + msgcnt*sizeof(struct dtstmsg_cntrl_t);
                 dtstmsgsz = sizeof(struct dtstmsg_cntrl_t);
                 while(i<msgcnt) {
                         pkt->dtstmsg[i].dtstmsg_cntrl.dtstmsg_hdr = 0x01;
-                        pkt->dtstmsg[i].dtstmsg_cntrl.fldcnt = 11;
+                        pkt->dtstmsg[i].dtstmsg_cntrl.fldcnt = htons(11);
                         i++;
                 }
                 break;
         case AXS:
-                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(*(pkt->pyld_hdr->wrtrId)) + msgfldsz + msgcnt*sizeof(struct dtstmsg_axs_t);
+                pkt->len = sizeof(struct ntwrkmsg_hdr_t) + sizeof(struct grp_hdr_t) + sizeof(struct extntwrkmsg_hdr_t) + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(pkt->pyld_hdr->wrtrId) + msgfldsz + msgcnt*sizeof(struct dtstmsg_axs_t);
                 dtstmsgsz = sizeof(struct dtstmsg_axs_t);
                 while(i<msgcnt) {
                         pkt->dtstmsg[i].dtstmsg_axs.dtstmsg_hdr = 0x01;
-                        pkt->dtstmsg[i].dtstmsg_axs.fldcnt = 2;
+                        pkt->dtstmsg[i].dtstmsg_axs.fldcnt = htons(2);
                         i++;
                 }
                 break;
@@ -73,7 +74,7 @@ int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
         };
         i = 0;
         while (i <msgfldcnt) {
-                *(&(pkt->szrry->size) + i) = dtstmsgsz;
+                *(&(pkt->szrry->size) + i) = htons(dtstmsgsz);
                 i++;
         }
         
@@ -128,11 +129,11 @@ int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seq
         int64_t tmp;
         struct timespec time;
         int ok = 0;
-        pkt->grp_hdr->seqNo = seqno;
+        pkt->grp_hdr->seqNo = htons(seqno);
         //check for current limitation that only one control message is supported
         if(pkt->pyld_hdr->msgcnt != 1)
                 return 1; //fail
-        pkt->pyld_hdr->wrtrId[0] = WRITERID_CNTRL;
+        pkt->pyld_hdr->wrtrId = htons(WRITERID_CNTRL);
         ok += dbl2nint64(cntrlnfo->x_set.cntrlvl,&tmp);
         pkt->dtstmsg[0].dtstmsg_cntrl.xvel_set = htobe64(tmp);
         pkt->dtstmsg[0].dtstmsg_cntrl.xenable = (uint8_t) cntrlnfo->x_set.cntrlsw;
@@ -240,7 +241,6 @@ int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr)
         msg_hdr->msg_iov->iov_base = buf;
         msg_hdr->msg_iov->iov_len = buflen;
         msg_hdr->msg_iovlen = 1;
-        
 
         sndcnt = sendmsg(fd,msg_hdr,0);
         if (sndcnt < 0) {
