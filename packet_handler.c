@@ -250,6 +250,74 @@ int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr)
         return 0;
 }
 
+int rcvpkt(int fd, union dtstmsg_t dtstmsgs[], int dtstmsgcnt)         //TODO check how memory managemeant is done here
+{
+
+        return 0;
+}
+
+int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
+{
+        //WIP
+        uint16_t dtstmsgsz = 0;
+        int msgfldsz;
+        int msgfldcnt;
+        int msgcnt;
+        pkt->eth_hdr = NULL; //pkt->sktbf;
+        pkt->ip_hdr = NULL;
+        pkt->udp_hdr = NULL;
+        pkt->ntwrkmsg_hdr = (struct ntwrkmsg_hdr_t*) pkt->sktbf;//(struct ntwrkmsg_hdr_t*) ((char *) pkt->eth_hdr + sizeof(struct eth_hdr_t));
+        pkt->grp_hdr = (struct grp_hdr_t*) ((char *) pkt->ntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
+        pkt->pyld_hdr = (struct pyld_hdr_t*) ((char *) pkt->grp_hdr + sizeof(struct grp_hdr_t));
+        msgcnt = pkt->pyld_hdr->msgcnt;
+        pkt->extntwrkmsg_hdr = (struct extntwrkmsg_hdr_t*) ((char *) pkt->pyld_hdr + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(pkt->pyld_hdr->wrtrId));
+        if (msgcnt < 2){
+                //for msgcnt = 1, sizearray is ommitted
+                pkt->szrry = NULL;
+                msgfldsz = 0;
+                msgfldcnt = 0;
+                dtstmsgsz = pkt->len - sizeof(struct ntwrkmsg_hdr_t) - sizeof(struct grp_hdr_t) - sizeof(struct extntwrkmsg_hdr_t) - sizeof(pkt->pyld_hdr->msgcnt) - msgcnt*sizeof(pkt->pyld_hdr->wrtrId) - msgfldsz;
+        } else {
+                //for msgcnt >1, set sizes of datasetmessages in sizearray
+                pkt->szrry = (struct szrry_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
+                msgfldsz = msgcnt*sizeof(*(pkt->szrry));
+                msgfldcnt = msgcnt;
+                dtstmsgsz = pkt->szrry;
+        }
+        pkt->dtstmsg = (union dtstmsg_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct extntwrkmsg_hdr_t) + msgfldsz);
+        switch(dtstmsgsz){
+        case sizeof(struct dtstmsg_cntrl_t):
+                pkttyp = CNTRL;
+                break;
+        case sizeof(struct dtstmsg_axs_t):
+                pkttyp = AXS;
+                break;
+        default:
+                return -1;
+        }
+              
+        return msgcnt;
+}
+
+int chckmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr)
+{
+
+        return 0;
+}
+
+int chckpkthdrs(struct rt_pkt_t* pkt)
+{
+
+        return 0;
+}
+
+int prsaxsmsg(union dtstmsg_t *dtstmsg, struct axsnfo_t * axsnfo)
+{
+
+        return 0;
+}
+
+
 
 /* ##### PacketStore ##### */
 

@@ -240,6 +240,23 @@ int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime
 /* sends the packet with the specified txtime and other values */
 int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr);
 
+/* receives a packet, checks the various headers and if its for the application, 
+* then returns the datasetmessages
+*/
+int rcvpkt(int fd, union dtstmsg_t dtstmsgs[], int dtstmsgcnt);         //TODO check how memory managemeant is done here
+
+/* parses packet and sets the pointers correctly returns the messagecount and pkttype*/
+int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *msgtyp);
+
+/* checks the msghdr structure for the correct destination address */
+int chckmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr);
+
+/* checks paket headers for correct values like groupid ans so on */
+int chckpkthdrs(struct rt_pkt_t* pkt);
+
+/* parse axis information from datasetmessage */
+int prsaxsmsg(union dtstmsg_t *dtstmsg, struct axsnfo_t * axsnfo);
+
 
 /* ##### PacketStore ###### */
 /* Holds and manages pointers to allocated packets to manage memory */
