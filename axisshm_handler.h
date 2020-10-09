@@ -33,6 +33,7 @@ int wrt_axsinfo2shm(struct axsnfo_t* axsnfo, struct mk_maininput* mk_mainin);
 int rd_shm2cntlinfo(struct mk_mainoutput* mk_mainout, struct cntrlnfo_t* cntrlnfo);
 
 /* closes opened shared memories */
-void clsShM();
+void clscntrlShM(struct mk_mainoutput** mk_mainout);
+void clsaxsShM(struct mk_maininput** mk_mainin);
 
 #endif /* _AXIXSHMHANDLER_H_ */

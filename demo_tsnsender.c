@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include "packet_handler.h"
+#include "axisshm_handler.h"
 
 //parameters whcih are fixed at compile time, all values in nano seconds
 #define SENDINGSTACK_DURATION 100000 
@@ -157,6 +158,7 @@ int init(struct tsnsender_t *sender)
         //open recv socket
 
         //open shared memory
+        sender->txshm = opnShM_cntrlnfo();
 
         //allocate memory for packets
         ok += initpktstrg(&(sender->pkts),5);
@@ -267,6 +269,7 @@ int cleanup(struct tsnsender_t *sender)
         ok += close(sender->txsckt);
 
         //close shared memory
+        clscntrlShM(&(sender->txshm));
 
         //free allocated memory for packets
         ok += destroypktstrg(&(sender->pkts));
@@ -314,6 +317,7 @@ void *rt_thrd(void *tsnsender)
 		cyclecnt++;
 
                 //get TX values from shared memory
+                ok = rd_shm2cntlinfo(sender->txshm, &snd_cntrlnfo);
 
                 //get and fill TX-Packet
                 ok = getfreepkt(&(sender->pkts),&snd_pkt);       //maybe change to one static packet in thread to avoid competing access to paket store from rx and tx threads

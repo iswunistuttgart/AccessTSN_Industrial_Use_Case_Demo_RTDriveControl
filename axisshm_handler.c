@@ -94,8 +94,14 @@ int rd_shm2cntlinfo(struct mk_mainoutput* mk_mainout, struct cntrlnfo_t* cntrlnf
 }
 
 
-void clsShM()
+void clscntrlShM(struct mk_mainoutput** mk_mainout)
 {
         shm_unlink(MK_MAINOUTKEY);
-        shm_unlink(MK_MAININKEY);
+        mk_mainout = NULL;
+}
+
+void clsaxsShM(struct mk_maininput** mk_mainin)
+{
+       shm_unlink(MK_MAININKEY);
+       mk_mainin = NULL;
 }
