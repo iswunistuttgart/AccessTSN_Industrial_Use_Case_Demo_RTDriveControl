@@ -271,6 +271,8 @@ int cleanup(struct tsnsender_t *sender)
         //free allocated memory for packets
         ok += destroypktstrg(&(sender->pkts));
 
+        free(sender->cnfg_optns.dstaddr);
+
         return ok;
 }
 
@@ -326,7 +328,6 @@ void *rt_thrd(void *tsnsender)
                         printf("Error in filling sending packet or corresponding headers.\n");
                         return NULL;       //fail
                 }
-                               
                 //send TX-Packet
                 ok += sendpkt(sender->txsckt,snd_pkt->sktbf,snd_pkt->len,&snd_msghdr);
                 if (0 == ok)
