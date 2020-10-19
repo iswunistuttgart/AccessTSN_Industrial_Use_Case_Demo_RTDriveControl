@@ -234,7 +234,7 @@ double nint642dbl(int64_t val);
 /* fills the LinkLayer(Ethernet)-Address structure */
 int fillethaddr(struct sockaddr_ll *addr, uint8_t *mac_addr, uint16_t ethtyp, int fd, char *ifnm);
 
-/* fills the msghdr structure with the necessary values to sned the packet */
+/* fills the msghdr structure with the necessary values to send the packet */
 int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime, clockid_t clkid);
 
 /* sends the packet with the specified txtime and other values */
@@ -243,15 +243,15 @@ int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr);
 /* receives a packet, checks the various headers and if its for the application, 
 * then returns the datasetmessages
 */
-int rcvpkt(int fd, union dtstmsg_t dtstmsgs[], int dtstmsgcnt);         //TODO check how memory managemeant is done here
+int rcvpkt(int fd, union dtstmsg_t dtstmsgs[], int *dtstmsgcnt);         //TODO check how memory managemeant is done here
 
 /* parses packet and sets the pointers correctly returns the messagecount and pkttype*/
 int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *msgtyp);
 
 /* checks the msghdr structure for the correct destination address */
-int chckmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr);
+int chckmsghdr(struct msghdr *msg_hdr, uint8_t *mac_addr, uint16_t ethtyp);
 
-/* checks paket headers for correct values like groupid ans so on */
+/* checks paket headers for correct values like flags, groupids and so on */
 int chckpkthdrs(struct rt_pkt_t* pkt);
 
 /* parse axis information from datasetmessage */

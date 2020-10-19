@@ -195,7 +195,7 @@ int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime
 {
         struct cmsghdr *cmsg;
         char cntlmsg[CMSG_SPACE(sizeof(txtime)) /*+ CMSG_SPACE(sizeof(clkid)) + CMSG_SPACE(sizeof(uint8_t))*/] = {};
-        uint8_t drop_if_late = 1;
+        //int8_t drop_if_late = 1;
 
         if(NULL == msg_hdr)
                 return 1;       //fail
@@ -212,7 +212,7 @@ int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime
         cmsg->cmsg_len = CMSG_LEN(sizeof(txtime));
         *((uint64_t *) CMSG_DATA(cmsg)) = txtime;
 */
-        /* not in lkernel v5.9 or older
+        /* not in kernel v5.9 or older
         cmsg = CMSG_NXTHDR(msg_hdr, cmsg);
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_CLOCKID;
@@ -250,19 +250,28 @@ int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr)
         return 0;
 }
 
-int rcvpkt(int fd, union dtstmsg_t dtstmsgs[], int dtstmsgcnt)         //TODO check how memory managemeant is done here
+int rcvpkt(int fd, union dtstmsg_t dtstmsgs[], int * dtstmsgcnt)         //TODO check how memory managemeant is done here
 {
+        //TODO change to more separated functiosn for rcv and parse to datasetmessage
+        struct msghdr* rcvmsg_hdr = NULL;
+        struct sockaddr_ll addr;
+        struct rt_pkt_t* rcvpkt = NULL;
+        int ok = 0;
+        enum msgtyp_t pkttyp;
+        //TODO do memory management for recv packet
+        //TODO get packet from socket
+        
+        *dtstmsgcnt = prspkt(rcvpkt,&pkttyp);
+
 
         return 0;
 }
 
 int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
 {
-        //WIP
         uint16_t dtstmsgsz = 0;
-        int msgfldsz;
-        int msgfldcnt;
-        int msgcnt;
+        int msgfldsz = 0;
+        int msgcnt = 0;
         pkt->eth_hdr = NULL; //pkt->sktbf;
         pkt->ip_hdr = NULL;
         pkt->udp_hdr = NULL;
@@ -275,22 +284,21 @@ int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
                 //for msgcnt = 1, sizearray is ommitted
                 pkt->szrry = NULL;
                 msgfldsz = 0;
-                msgfldcnt = 0;
                 dtstmsgsz = pkt->len - sizeof(struct ntwrkmsg_hdr_t) - sizeof(struct grp_hdr_t) - sizeof(struct extntwrkmsg_hdr_t) - sizeof(pkt->pyld_hdr->msgcnt) - msgcnt*sizeof(pkt->pyld_hdr->wrtrId) - msgfldsz;
         } else {
                 //for msgcnt >1, set sizes of datasetmessages in sizearray
                 pkt->szrry = (struct szrry_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
                 msgfldsz = msgcnt*sizeof(*(pkt->szrry));
-                msgfldcnt = msgcnt;
                 dtstmsgsz = pkt->szrry;
         }
         pkt->dtstmsg = (union dtstmsg_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct extntwrkmsg_hdr_t) + msgfldsz);
+        // limitation only one type of dataset-message in a single packet supported
         switch(dtstmsgsz){
         case sizeof(struct dtstmsg_cntrl_t):
-                pkttyp = CNTRL;
+                *pkttyp = CNTRL;
                 break;
         case sizeof(struct dtstmsg_axs_t):
-                pkttyp = AXS;
+                *pkttyp = AXS;
                 break;
         default:
                 return -1;
@@ -299,20 +307,44 @@ int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
         return msgcnt;
 }
 
-int chckmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr)
+int chckmsghdr(struct msghdr *msg_hdr, uint8_t *mac_addr, uint16_t ethtyp)
 {
-
+        struct sockaddr_ll *rcvaddr;
+        rcvaddr = (struct sockaddr_ll*) msg_hdr->msg_name;
+        if(rcvaddr->sll_halen != ETH_ALEN)
+                return 1;       //fail
+        if(rcvaddr->sll_protocol != htons(ethtyp))
+                return 1;       //fail
+        for(int i=0;i<ETH_ALEN;i++) {
+                if(rcvaddr->sll_addr[i] != mac_addr[i]) //TODO check if coorect behavior
+                        return 1;       //fail
+        }
         return 0;
 }
 
 int chckpkthdrs(struct rt_pkt_t* pkt)
 {
+        //check if flags are the supported paket modes
+        //and if group header fields are the same
+        if(pkt->ntwrkmsg_hdr->ver_fl != 0xF1)
+                return 1;       //fail
+        if(pkt->ntwrkmsg_hdr->extfl != 0x21)
+                return 1;       //fail
+        if(pkt->grp_hdr->wgrpId = htons(WGRPID))
+                return 1;       //fail
+        if(pkt->grp_hdr->grpVer != htonl(GRPVER))
+                return 1;       //fail
 
         return 0;
 }
 
 int prsaxsmsg(union dtstmsg_t *dtstmsg, struct axsnfo_t * axsnfo)
 {
+        //TODO check Datasetflags
+        if(dtstmsg->dtstmsg_axs.fldcnt != 2)    //identifier if truly axis-dataset-message
+                return 1;       //fail
+        axsnfo->cntrlsw = dtstmsg->dtstmsg_axs.fault;
+        axsnfo->cntrlvl = dtstmsg->dtstmsg_axs.pos_cur;
 
         return 0;
 }
