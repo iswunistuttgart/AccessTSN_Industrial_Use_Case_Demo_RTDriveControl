@@ -240,19 +240,22 @@ int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime
 /* sends the packet with the specified txtime and other values */
 int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr);
 
-/* receives a packet, checks the various headers and if its for the application, 
-* then returns the datasetmessages
-*/
-int rcvpkt(int fd, union dtstmsg_t dtstmsgs[], int *dtstmsgcnt);         //TODO check how memory managemeant is done here
-
-/* parses packet and sets the pointers correctly returns the messagecount and pkttype*/
-int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *msgtyp);
+/* receives a packet, from socket */
+int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr);         //TODO check how memory managemeant is done here
 
 /* checks the msghdr structure for the correct destination address */
 int chckmsghdr(struct msghdr *msg_hdr, uint8_t *mac_addr, uint16_t ethtyp);
 
+/* parses packet and sets the pointers correctly returns the messagecount and msgtype */
+int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *msgtyp);
+
 /* checks paket headers for correct values like flags, groupids and so on */
 int chckpkthdrs(struct rt_pkt_t* pkt);
+
+/* parse dataset messages from packet, return datasetmessages 
+ * limitation: only packets with a single type of dataset-message is supported
+ */
+int prsdtstmsg(struct rt_pkt_t* pkt, enum msgtyp_t pkttyp, union dtstmsg_t *dtstmsgs[], int *dtstmsgcnt);
 
 /* parse axis information from datasetmessage */
 int prsaxsmsg(union dtstmsg_t *dtstmsg, struct axsnfo_t * axsnfo);

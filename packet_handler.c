@@ -250,20 +250,44 @@ int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr)
         return 0;
 }
 
-int rcvpkt(int fd, union dtstmsg_t dtstmsgs[], int * dtstmsgcnt)         //TODO check how memory managemeant is done here
+int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)        //TODO check how memory management is done here
 {
-        //TODO change to more separated functiosn for rcv and parse to datasetmessage
-        struct msghdr* rcvmsg_hdr = NULL;
-        struct sockaddr_ll addr;
-        struct rt_pkt_t* rcvpkt = NULL;
         int ok = 0;
-        enum msgtyp_t pkttyp;
-        //TODO do memory management for recv packet
-        //TODO get packet from socket
+        struct iovec msg_iov;
+        if (NULL == pkt)
+                return 1;       //fail
+        if(NULL == rcvmsg_hdr)
+                return 1;       //fail
+
+        rcvmsg_hdr->msg_iov = &msg_iov;
+        rcvmsg_hdr->msg_iov->iov_base = pkt->sktbf;
+        rcvmsg_hdr->msg_iov->iov_len = MAXPKTSZ;
+        rcvmsg_hdr->msg_iovlen = 1;
         
-        *dtstmsgcnt = prspkt(rcvpkt,&pkttyp);
+        //TODO do memory management for recv packet
+        ok = recvmsg(fd, rcvmsg_hdr, MSG_DONTWAIT);
+        if(ok < 0)
+                return 1;       //fail
+        if(MSG_TRUNC == (rcvmsg_hdr->msg_flags & MSG_TRUNC))
+                return 1;       //fail
+        pkt->len = ok;
+
+        return 0;
+}
 
 
+int chckmsghdr(struct msghdr *msg_hdr, uint8_t *mac_addr, uint16_t ethtyp)
+{
+        struct sockaddr_ll *rcvaddr;
+        rcvaddr = (struct sockaddr_ll*) msg_hdr->msg_name;
+        if(rcvaddr->sll_halen != ETH_ALEN)
+                return 1;       //fail
+        if(rcvaddr->sll_protocol != htons(ethtyp))
+                return 1;       //fail
+        for(int i=0;i<ETH_ALEN;i++) {
+                if(rcvaddr->sll_addr[i] != mac_addr[i]) //TODO check if coorect behavior
+                        return 1;       //fail
+        }
         return 0;
 }
 
@@ -307,21 +331,6 @@ int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
         return msgcnt;
 }
 
-int chckmsghdr(struct msghdr *msg_hdr, uint8_t *mac_addr, uint16_t ethtyp)
-{
-        struct sockaddr_ll *rcvaddr;
-        rcvaddr = (struct sockaddr_ll*) msg_hdr->msg_name;
-        if(rcvaddr->sll_halen != ETH_ALEN)
-                return 1;       //fail
-        if(rcvaddr->sll_protocol != htons(ethtyp))
-                return 1;       //fail
-        for(int i=0;i<ETH_ALEN;i++) {
-                if(rcvaddr->sll_addr[i] != mac_addr[i]) //TODO check if coorect behavior
-                        return 1;       //fail
-        }
-        return 0;
-}
-
 int chckpkthdrs(struct rt_pkt_t* pkt)
 {
         //check if flags are the supported paket modes
@@ -335,6 +344,30 @@ int chckpkthdrs(struct rt_pkt_t* pkt)
         if(pkt->grp_hdr->grpVer != htonl(GRPVER))
                 return 1;       //fail
 
+        return 0;
+}
+
+int prsdtstmsg(struct rt_pkt_t* pkt, enum msgtyp_t pkttyp, union dtstmsg_t *dtstmsgs[], int *dtstmsgcnt)
+{
+        //limitation: only packets with a single type of dataset-message is supported
+        *dtstmsgcnt = 0;
+        int dtstmsgsz = 0;
+        switch(pkttyp){
+        case CNTRL:
+                dtstmsgsz = sizeof(struct dtstmsg_cntrl_t);
+                break;
+        case AXS:
+                dtstmsgsz = sizeof(struct dtstmsg_axs_t);
+                break;
+        default:
+                return 1;       //fail
+        }
+        
+        while(*dtstmsgcnt < pkt->pyld_hdr->msgcnt) {
+                dtstmsgs[*dtstmsgcnt] = (union dtstmsg_t*) (pkt->dtstmsg + (*dtstmsgcnt)*dtstmsgsz); 
+
+                (*dtstmsgcnt)++;
+        }
         return 0;
 }
 
