@@ -373,6 +373,7 @@ void *rt_thrd(void *tsnsender)
 void *rx_thrd(void *tsnsender)
 {
 	int ok = 0;
+        int rcv_cnt = 0;
         struct tsnsender_t *sender = (struct tsnsender_t *) tsnsender;
         struct timespec est;
         struct timespec wkuprcvtm;
@@ -395,24 +396,31 @@ void *rx_thrd(void *tsnsender)
         clock_gettime(CLOCK_TAI,&wkuprcvtm);
         clc_est(&wkuprcvtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &est);
         wkuprcvtm = clc_rcvwkuptm(&est,sender->cnfg_optns.rcvoffst,RECEIVINGSTACK_DURATION,APPRECVWAKEUP,MAXWAKEUPJITTER);
-        dec_tm(&wkuprcvtm,sender->cnfg_optns.intrvl_ns);
                 
-	int cyclecnt =0;
+	int cyclecnt = 0;
         //while loop
         while(cyclecnt < 10000){
                 
-                // nanosleep at start of cycle because of "continue" statement
-                //update time
-                /* can be done more simple when recv_offset cannot change during operation
-                inc_tm(&est,sender->cnfg_optns.intrvl_ns);
-                //calculate next wakeuptime
-                wkuprcvtm = clc_rcvwkuptm(&est,sender->cnfg_optns.rcvoffst,RECEIVINGSTACK_DURATION,APPRECVWAKEUP,MAXWAKEUPJITTER);
-                */
-                //more simple
-                inc_tm(&wkuprcvtm,sender->cnfg_optns.intrvl_ns);
+                //for more than one axis, multiple packets should arrive within a period
+                if((rcv_cnt%sender->cnfg_optns.num_rcvmacs) == 0){
+                        // nanosleep at start of cycle because of "continue" statement
+                        //update time
+                        /* can be done more simple when recv_offset cannot change during operation
+                        inc_tm(&est,sender->cnfg_optns.intrvl_ns);
+                        //calculate next wakeuptime
+                        wkuprcvtm = clc_rcvwkuptm(&est,sender->cnfg_optns.rcvoffst,RECEIVINGSTACK_DURATION,APPRECVWAKEUP,MAXWAKEUPJITTER);
+                        */
+                        //more simple
+                        clock_gettime(CLOCK_TAI,&curtm);
+                        while(cmptmspc_Ab4rB(&wkuprcvtm,&curtm)){
+                                //if no (valid) packet arrives the receive could wait longer than a period
+                                inc_tm(&wkuprcvtm,sender->cnfg_optns.intrvl_ns);
+                        }
 
-                //sleep until the next cycle
-                clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
+                        //sleep until the next cycle
+                        clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
+                        rcv_cnt = 0;
+                }
 
                 clock_gettime(CLOCK_TAI,&curtm);
 		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
@@ -470,7 +478,7 @@ void *rx_thrd(void *tsnsender)
                 }
 
                 retusedpkt(&(sender->pkts),&rcvd_pkt);
-     
+                rcv_cnt++;
         }
 
         return NULL;
