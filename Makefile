@@ -24,7 +24,10 @@ all: demo_tsnsender
 demo_tsnsender: demo_tsnsender.c obj/packet_handler.o obj/axisshm_handler.o obj/time_calc.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
+recv_test: tests/recv_test.c obj/packet_handler.o obj/time_calc.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core demoapps_common/*~ demo_tsnsender
+	rm -f $(ODIR)/*.o *~ core demoapps_common/*~ demo_tsnsender tests/recv_test

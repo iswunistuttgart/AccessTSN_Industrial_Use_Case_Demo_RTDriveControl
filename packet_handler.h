@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <net/ethernet.h>
 #include <linux/if.h>
 #include <linux/if_packet.h>
@@ -58,8 +59,8 @@
 #pragma pack(1)         /* set alignment to 1 byte boundary */
 
 struct eth_hdr_t {
-        uint8_t dstmac[6];
-        uint8_t srcmac[6];
+        char dstmac[6];
+        char srcmac[6];
         uint16_t ethtyp;
 };
 /*
@@ -240,11 +241,22 @@ int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime
 /* sends the packet with the specified txtime and other values */
 int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr);
 
+/* open receive socket as a RAW-packet socket with with AF_PACKET. 
+ * Activate reception of Ethernet-Multicast-packets for specifies addresses
+ * and bind to specified interface. Returns socket ID.
+ */
+int opnrxsckt(char *ifnm, char *mac_addrs[], int no_macs);
+
 /* receives a packet, from socket */
 int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr);         //TODO check how memory managemeant is done here
 
+/* checks the eth_hdr for one of the requested multicast-adresses
+ * and the correct ethertype directly using the pkt_skb_buffer
+ */
+int chckethhdr(struct rt_pkt_t* pkt, char *mac_addrs[], int no_macs);
+
 /* checks the msghdr structure for the correct destination address */
-int chckmsghdr(struct msghdr *msg_hdr, uint8_t *mac_addr, uint16_t ethtyp);
+int chckmsghdr(struct msghdr *msg_hdr, char *mac_addr, uint16_t ethtyp);
 
 /* parses packet and sets the pointers correctly returns the messagecount and msgtype */
 int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *msgtyp);

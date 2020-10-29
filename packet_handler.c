@@ -250,6 +250,59 @@ int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr)
         return 0;
 }
 
+int opnrxsckt(char *ifnm, char *mac_addrs[], int no_macs)
+{
+        struct ifreq ifopts;
+        int scktopts;
+        int rxsckt;
+        struct sockaddr_ll scktaddr;
+        struct packet_mreq pkt_mr;
+        memset(&pkt_mr, 0, sizeof(struct packet_mreq));
+
+        rxsckt = socket(AF_PACKET,SOCK_RAW,htons(ETHERTYPE));
+        if (rxsckt < 0)
+                return -1;      //fail
+
+        // allow socket to be reused
+        if (setsockopt(rxsckt, SOL_SOCKET, SO_REUSEADDR, &scktopts, sizeof(scktopts)) < 0) {
+                close(rxsckt);
+                return -1;      //fail
+        }
+
+        //get interface ID
+        strncpy(ifopts.ifr_name, ifnm, IFNAMSIZ);
+        if (ioctl(rxsckt, SIOCGIFINDEX, &ifopts) < 0) {
+                close(rxsckt);
+                return -1;
+        }
+        
+        // set interface to get multicast macs
+        pkt_mr.mr_ifindex = ifopts.ifr_ifindex;
+        pkt_mr.mr_type = PACKET_MR_MULTICAST;
+        //pkt_mr.mr_type = PACKET_MR_PROMISC;
+        pkt_mr.mr_alen = ETH_ALEN;
+        char * test;
+        for (int i = 0; i < no_macs; i++) {
+                memcpy(pkt_mr.mr_address, mac_addrs[i],ETH_ALEN);
+                if (setsockopt(rxsckt, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &pkt_mr,sizeof(struct packet_mreq)) < 0) {
+                        close(rxsckt);
+                        return -1;      //fail
+                }
+        }
+        
+        //bind to device        //TODO necessary?
+        //setsockopt(rxsckt, SOL_SOCKET, SO_BINDTODEVICE,ifnm,IFNAMSIZ);
+        /*scktaddr.sll_family = AF_PACKET;
+        scktaddr.sll_ifindex = ifopts.ifr_ifindex;
+        scktaddr.sll_protocol = ETHERTYPE;
+        if (bind(rxsckt,(struct sockaddr *) &scktaddr,sizeof(scktaddr)) < 0) {
+                close(rxsckt);
+                return -1;      //fail
+        }
+        */
+       return rxsckt;
+}
+
 int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)        //TODO check how memory management is done here
 {
         int ok = 0;
@@ -272,11 +325,28 @@ int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)        //TO
                 return 1;       //fail
         pkt->len = ok;
 
+        printf("Recvd Packet in recv fnkt: ");
+        for (int i = 0 ;i<100;i++)
+                printf("%02x",*((uint8_t *)(msg_iov.iov_base+i)));
+        printf("\n");
+
         return 0;
 }
+int chckethhdr(struct rt_pkt_t* pkt, char *mac_addrs[], int no_macs)
+{
+        struct eth_hdr_t * rcvd_ethhdr;
+        rcvd_ethhdr = (struct eth_hdr_t *) pkt->sktbf;
+        if (ETHERTYPE != ntohs(rcvd_ethhdr->ethtyp))
+                return 1;       //fail
+        
+        for (int i = 0; i<no_macs; i++) {
+                if(strncmp((rcvd_ethhdr->dstmac), mac_addrs[i], ETH_ALEN) == 0)
+                        return 0;       //succeed
+        }
+        return 1;       //fail
+}
 
-
-int chckmsghdr(struct msghdr *msg_hdr, uint8_t *mac_addr, uint16_t ethtyp)
+int chckmsghdr(struct msghdr *msg_hdr, char *mac_addr, uint16_t ethtyp)
 {
         struct sockaddr_ll *rcvaddr;
         rcvaddr = (struct sockaddr_ll*) msg_hdr->msg_name;
@@ -285,7 +355,7 @@ int chckmsghdr(struct msghdr *msg_hdr, uint8_t *mac_addr, uint16_t ethtyp)
         if(rcvaddr->sll_protocol != htons(ethtyp))
                 return 1;       //fail
         for(int i=0;i<ETH_ALEN;i++) {
-                if(rcvaddr->sll_addr[i] != mac_addr[i]) //TODO check if coorect behavior
+                if(rcvaddr->sll_addr[i] != mac_addr[i]) //TODO check if correct behavior
                         return 1;       //fail
         }
         return 0;
@@ -296,10 +366,10 @@ int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
         uint16_t dtstmsgsz = 0;
         int msgfldsz = 0;
         int msgcnt = 0;
-        pkt->eth_hdr = NULL; //pkt->sktbf;
+        pkt->eth_hdr = (struct eth_hdr_t*)pkt->sktbf;
         pkt->ip_hdr = NULL;
         pkt->udp_hdr = NULL;
-        pkt->ntwrkmsg_hdr = (struct ntwrkmsg_hdr_t*) pkt->sktbf;//(struct ntwrkmsg_hdr_t*) ((char *) pkt->eth_hdr + sizeof(struct eth_hdr_t));
+        pkt->ntwrkmsg_hdr = /*(struct ntwrkmsg_hdr_t*) pkt->sktbf;*/(struct ntwrkmsg_hdr_t*) ((char *) pkt->eth_hdr + sizeof(struct eth_hdr_t));
         pkt->grp_hdr = (struct grp_hdr_t*) ((char *) pkt->ntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
         pkt->pyld_hdr = (struct pyld_hdr_t*) ((char *) pkt->grp_hdr + sizeof(struct grp_hdr_t));
         msgcnt = pkt->pyld_hdr->msgcnt;
@@ -308,12 +378,12 @@ int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
                 //for msgcnt = 1, sizearray is ommitted
                 pkt->szrry = NULL;
                 msgfldsz = 0;
-                dtstmsgsz = pkt->len - sizeof(struct ntwrkmsg_hdr_t) - sizeof(struct grp_hdr_t) - sizeof(struct extntwrkmsg_hdr_t) - sizeof(pkt->pyld_hdr->msgcnt) - msgcnt*sizeof(pkt->pyld_hdr->wrtrId) - msgfldsz;
+                dtstmsgsz = pkt->len - sizeof(struct eth_hdr_t) - sizeof(struct ntwrkmsg_hdr_t) - sizeof(struct grp_hdr_t) - sizeof(struct extntwrkmsg_hdr_t) - sizeof(pkt->pyld_hdr->msgcnt) - msgcnt*sizeof(pkt->pyld_hdr->wrtrId) - msgfldsz;
         } else {
                 //for msgcnt >1, set sizes of datasetmessages in sizearray
                 pkt->szrry = (struct szrry_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
                 msgfldsz = msgcnt*sizeof(*(pkt->szrry));
-                dtstmsgsz = pkt->szrry;
+                dtstmsgsz = ntohs(pkt->szrry->size);
         }
         pkt->dtstmsg = (union dtstmsg_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct extntwrkmsg_hdr_t) + msgfldsz);
         // limitation only one type of dataset-message in a single packet supported
@@ -339,7 +409,7 @@ int chckpkthdrs(struct rt_pkt_t* pkt)
                 return 1;       //fail
         if(pkt->ntwrkmsg_hdr->extfl != 0x21)
                 return 1;       //fail
-        if(pkt->grp_hdr->wgrpId = htons(WGRPID))
+        if(pkt->grp_hdr->wgrpId != htons(WGRPID))
                 return 1;       //fail
         if(pkt->grp_hdr->grpVer != htonl(GRPVER))
                 return 1;       //fail
