@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
+#include <poll.h>
 #include "packet_handler.h"
 #include "axisshm_handler.h"
 
@@ -45,8 +46,11 @@ struct cnfg_optns_t{
         uint32_t intrvl_ns;
         uint32_t sndoffst;
         uint32_t rcvoffst;
+        uint32_t rcvwndw;
         uint8_t * dstaddr;
         char * ifname;
+        char *rcv_macs[4];
+        uint8_t num_rcvmacs;
 };
 
 struct tsnsender_t {
@@ -87,8 +91,9 @@ static void usage(char *appname)
                 "Usage: %s [options]\n"
                 " -t [value]           Specifies update-period in microseconds. Default 10 seconds.\n"
                 " -b [value]           Specifies the basetime (the start of the cycle). This is a Unix-Timestamp.\n"
-                " -o [nanosec]         Specififes the sending offset, time between start of cycle and sending slot in nano seconds.\n"
-                " -r [nanosec]         Specififes the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
+                " -o [nanosec]         Specifies the sending offset, time between start of cycle and sending slot in nano seconds.\n"
+                " -r [nanosec]         Specifies the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
+                " -w [nanosec]         Specifies the receive window duration, timeinterval in which a packet is expected in nano seconds.\n"
                 " -i                   Name of the Networkinterface to use.\n"
                 " -h                   Prints this help message and exits\n"
                 "\n",
@@ -101,7 +106,7 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         int c;
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:i:"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:i:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspc(atof(optarg), &(sender->cnfg_optns.basetm));
@@ -114,6 +119,9 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
                         break;
                 case 'r':
                         (*sender).cnfg_optns.rcvoffst = atoi(optarg);
+                        break;
+                case 'w':
+                        (*sender).cnfg_optns.rcvwndw = atoi(optarg);
                         break;
                 case 'i':
                         (*sender).cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
@@ -140,8 +148,6 @@ int opntxsckt(void)
         return sckt;
 }
 
-// open rx socket
-
 //initialization
 int init(struct tsnsender_t *sender)
 {
@@ -156,9 +162,16 @@ int init(struct tsnsender_t *sender)
         }
 
         //open recv socket
+        sender->rxsckt = opnrxsckt(sender->cnfg_optns.ifname,sender->cnfg_optns.rcv_macs,sender->cnfg_optns.num_rcvmacs);
+        if (sender->rxsckt < 0) {
+                printf("RX Socket open failed. \n");
+                sender->rxsckt = 0;
+                return 1;
+        }
 
         //open shared memory
         sender->txshm = opnShM_cntrlnfo();
+        sender->rxshm = opnShM_axsnfo();
 
         //allocate memory for packets
         ok += initpktstrg(&(sender->pkts),5);
@@ -264,6 +277,7 @@ int cleanup(struct tsnsender_t *sender)
         //maybe need to wait until thread has ended?
 
         //close rx socket
+        ok += close(sender->rxsckt);
         
         //close tx socket
         ok += close(sender->txsckt);
@@ -275,6 +289,8 @@ int cleanup(struct tsnsender_t *sender)
         ok += destroypktstrg(&(sender->pkts));
 
         free(sender->cnfg_optns.dstaddr);
+        for (int i = 0;i<sender->cnfg_optns.num_rcvmacs;i++)
+                free(sender->cnfg_optns.rcv_macs[i]);
 
         return ok;
 }
@@ -356,34 +372,36 @@ void *rt_thrd(void *tsnsender)
 //Real time recv thread
 void *rx_thrd(void *tsnsender)
 {
-	const struct tsnsender_t *sender = (const struct tsnsender_t *) tsnsender;
+	int ok = 0;
+        struct tsnsender_t *sender = (struct tsnsender_t *) tsnsender;
         struct timespec est;
         struct timespec wkuprcvtm;
         struct timespec curtm;
-	
+        
+        struct pollfd fds[1] = {};
+        fds[0].fd = sender->rxsckt;
+        fds[0].events = POLLIN;
+        int tmout = sender->cnfg_optns.rcvwndw/1000000;
+
+	struct rt_pkt_t * rcvd_pkt;
+        struct msghdr rcvd_msghdr;
+        enum msgtyp_t msg_typ;
+        union dtstmsg_t *dtstmsgs[4] = {NULL,NULL,NULL,NULL};
+        int dtstmsgcnt;
+        struct axsnfo_t axs_nfo;
                 
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods), calculated fitting offset to recv */
         clock_gettime(CLOCK_TAI,&wkuprcvtm);
         clc_est(&wkuprcvtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &est);
         wkuprcvtm = clc_rcvwkuptm(&est,sender->cnfg_optns.rcvoffst,RECEIVINGSTACK_DURATION,APPRECVWAKEUP,MAXWAKEUPJITTER);
-        //sleep till first wakeup time
-        clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
-        
+        dec_tm(&wkuprcvtm,sender->cnfg_optns.intrvl_ns);
+                
 	int cyclecnt =0;
         //while loop
         while(cyclecnt < 10000){
                 
-                clock_gettime(CLOCK_TAI,&curtm);
-		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
-		cyclecnt++;
-
-                //check for RX-packet
-
-                //parse RX-packet
-
-                //write RX values to shared memory
-
+                // nanosleep at start of cycle because of "continue" statement
                 //update time
                 /* can be done more simple when recv_offset cannot change during operation
                 inc_tm(&est,sender->cnfg_optns.intrvl_ns);
@@ -395,6 +413,64 @@ void *rx_thrd(void *tsnsender)
 
                 //sleep until the next cycle
                 clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
+
+                clock_gettime(CLOCK_TAI,&curtm);
+		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
+		cyclecnt++;
+
+                //check for RX-packet
+                ok = poll(fds,1,tmout);
+                if (ok <= 0)
+                        continue;       //TODO make cycle fitting
+                
+                //receive paket
+                ok = getfreepkt(&(sender->pkts),&rcvd_pkt);
+                if (ok == 1) {
+                        printf("Could not get free packet for receiving. \n");
+                        return NULL;       //fail
+                }
+                ok = rcvpkt(sender->rx_thrd, rcvd_pkt, &rcvd_msghdr);
+                if (ok == 1) {
+                        printf("Receive failed. \n");
+                        retusedpkt(&(sender->pkts),&rcvd_pkt);
+                        return NULL;       //fail
+                }
+
+                // check ETH-header
+                axs_nfo.axsID = chckethhdr(rcvd_pkt, sender->cnfg_optns.rcv_macs, sender->cnfg_optns.num_rcvmacs);
+                if (axs_nfo.axsID == -1) {
+                        printf("Check ETH-Header failed. \n");
+                        retusedpkt(&(sender->pkts),&rcvd_pkt);
+                        continue;
+                }
+                //parse RX-packet
+                ok = prspkt(rcvd_pkt, &msg_typ);
+                if ((ok == 1) || (msg_typ != AXS)) {
+                        printf("Parsing of received packet failed, or packet not a AXS-packet.\n");
+                        retusedpkt(&(sender->pkts),&rcvd_pkt);
+                        continue;
+                }
+                ok = chckpkthdrs(rcvd_pkt);
+                if (ok == 1) {
+                        printf("Check Packet-Headers failed. \n");
+                        retusedpkt(&(sender->pkts),&rcvd_pkt);
+                        continue;
+                }
+                ok = prsdtstmsg(rcvd_pkt, msg_typ, dtstmsgs, &dtstmsgcnt);
+                
+                //write RX values to shared memory
+                for (int i = 0;i<dtstmsgcnt; i++) {
+                        ok = prsaxsmsg(dtstmsgs[i],&axs_nfo);
+                        if (dtstmsgcnt > 1)  {
+                                //only one datasetmsg in packet, axs differentation through rcvmac
+                                axs_nfo.axsID = i;
+                        }
+                        ok =  wrt_axsinfo2shm(&axs_nfo, sender->rxshm);
+                        dtstmsgs[i] = NULL;
+                }
+
+                retusedpkt(&(sender->pkts),&rcvd_pkt);
+     
         }
 
         return NULL;
@@ -414,6 +490,19 @@ int main(int argc, char* argv[])
         sender.cnfg_optns.dstaddr[3] = 0x55;
         sender.cnfg_optns.dstaddr[4] = 0x00;
         sender.cnfg_optns.dstaddr[5] = 0x00;
+
+        sender.cnfg_optns.rcv_macs[0] = calloc(ETH_ALEN,sizeof(char));
+        sender.cnfg_optns.rcv_macs[1] = calloc(ETH_ALEN,sizeof(char));
+        sender.cnfg_optns.rcv_macs[2] = calloc(ETH_ALEN,sizeof(char));
+        sender.cnfg_optns.rcv_macs[3] = calloc(ETH_ALEN,sizeof(char));
+
+        sender.cnfg_optns.rcv_macs[0] = DSTADDRAXSX;
+        sender.cnfg_optns.rcv_macs[1] = DSTADDRAXSY;
+        sender.cnfg_optns.rcv_macs[2] = DSTADDRAXSZ;
+        sender.cnfg_optns.rcv_macs[3] = DSTADDRAXSS;
+        sender.cnfg_optns.num_rcvmacs = 4;
+
+
         
         printf("dstaddr: 0x%02x:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x\n",sender.cnfg_optns.dstaddr[0],sender.cnfg_optns.dstaddr[1],sender.cnfg_optns.dstaddr[2],sender.cnfg_optns.dstaddr[3],sender.cnfg_optns.dstaddr[4],sender.cnfg_optns.dstaddr[5]);
         
@@ -433,12 +522,10 @@ int main(int argc, char* argv[])
         signal(SIGTERM, sigfunc);
         signal(SIGINT, sigfunc);
 
-        //rt_thrd(&sender);
-
         //start rt-thread   
         /* Create a pthread with specified attributes */
-        ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, (void*)&sender);
-  //      rt_thrd((void*)&sender);
+  //      ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, (void*)&sender);
+        rt_thrd((void*)&sender);
         if (ok) {
                 printf("create pthread failed\n");
                 //cleanup

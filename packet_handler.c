@@ -337,13 +337,13 @@ int chckethhdr(struct rt_pkt_t* pkt, char *mac_addrs[], int no_macs)
         struct eth_hdr_t * rcvd_ethhdr;
         rcvd_ethhdr = (struct eth_hdr_t *) pkt->sktbf;
         if (ETHERTYPE != ntohs(rcvd_ethhdr->ethtyp))
-                return 1;       //fail
+                return -1;       //fail
         
         for (int i = 0; i<no_macs; i++) {
                 if(strncmp((rcvd_ethhdr->dstmac), mac_addrs[i], ETH_ALEN) == 0)
-                        return 0;       //succeed
+                        return i;       //succeed
         }
-        return 1;       //fail
+        return -1;       //fail
 }
 
 int chckmsghdr(struct msghdr *msg_hdr, char *mac_addr, uint16_t ethtyp)

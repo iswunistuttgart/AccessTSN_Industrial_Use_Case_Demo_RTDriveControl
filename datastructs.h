@@ -16,10 +16,10 @@
 
 /* ID to identify the axis */
 enum axsID_t {
-        x,
-        y,
-        z,
-        s,
+        x = 0,
+        y = 1,
+        z = 2,
+        s = 3,
 };
 
 /* struct for the information per axis, this can be either set point or current value */
