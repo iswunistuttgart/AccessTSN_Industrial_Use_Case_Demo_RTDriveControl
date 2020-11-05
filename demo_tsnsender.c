@@ -377,7 +377,7 @@ void *rt_thrd(void *tsnsender)
 void *rx_thrd(void *tsnsender)
 {
 	int ok = 0;
-        int rcv_cnt = 0;
+        int rcv_cnt = 1;
         struct tsnsender_t *sender = (struct tsnsender_t *) tsnsender;
         struct timespec est;
         struct timespec wkuprcvtm;
@@ -406,7 +406,7 @@ void *rx_thrd(void *tsnsender)
         while(cyclecnt < 10000){
                 
                 //for more than one axis, multiple packets should arrive within a period
-                if((rcv_cnt%sender->cnfg_optns.num_rcvmacs) == 0){
+                if((rcv_cnt%(sender->cnfg_optns.num_rcvmacs+1)) == 0){
                         // nanosleep at start of cycle because of "continue" statement
                         //update time
                         /* can be done more simple when recv_offset cannot change during operation
@@ -423,7 +423,7 @@ void *rx_thrd(void *tsnsender)
 
                         //sleep until the next cycle
                         clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
-                        rcv_cnt = 0;
+                        rcv_cnt = 1;
                 }
 
                 clock_gettime(CLOCK_TAI,&curtm);
@@ -441,7 +441,7 @@ void *rx_thrd(void *tsnsender)
                         printf("Could not get free packet for receiving. \n");
                         return NULL;       //fail
                 }
-                ok = rcvpkt(sender->rx_thrd, rcvd_pkt, &rcvd_msghdr);
+                ok = rcvpkt(sender->rxsckt, rcvd_pkt, &rcvd_msghdr);
                 if (ok == 1) {
                         printf("Receive failed. \n");
                         retusedpkt(&(sender->pkts),&rcvd_pkt);
