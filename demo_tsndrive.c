@@ -172,26 +172,27 @@ int init(struct tsndrive_t *drivesim)
 {
         int ok = 0;
         struct sched_param param;
+        unsigned char mac[ETH_ALEN];
 
         //set addresses
         //set standard values
         drivesim->cnfg_optns.rcvaddr[0] = calloc(ETH_ALEN,sizeof(char));
-        (drivesim->cnfg_optns.rcvaddr[0])[0] = 0x01;
-        (drivesim->cnfg_optns.rcvaddr[0])[1] = 0xAC;
-        (drivesim->cnfg_optns.rcvaddr[0])[2] = 0xCE;
-        (drivesim->cnfg_optns.rcvaddr[0])[3] = 0x55;
-        (drivesim->cnfg_optns.rcvaddr[0])[4] = 0x00;
-        (drivesim->cnfg_optns.rcvaddr[0])[5] = 0x00;
+        sscanf(DSTADDRCNTRL,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(drivesim->cnfg_optns.rcvaddr[0],mac,ETH_ALEN);
 
         drivesim->cnfg_optns.snd_macs[0] = calloc(ETH_ALEN,sizeof(char));
         drivesim->cnfg_optns.snd_macs[1] = calloc(ETH_ALEN,sizeof(char));
         drivesim->cnfg_optns.snd_macs[2] = calloc(ETH_ALEN,sizeof(char));
         drivesim->cnfg_optns.snd_macs[3] = calloc(ETH_ALEN,sizeof(char));
 
-        drivesim->cnfg_optns.snd_macs[0] = DSTADDRAXSX;
-        drivesim->cnfg_optns.snd_macs[1] = DSTADDRAXSY;
-        drivesim->cnfg_optns.snd_macs[2] = DSTADDRAXSZ;
-        drivesim->cnfg_optns.snd_macs[3] = DSTADDRAXSS;
+        sscanf(DSTADDRAXSX,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(drivesim->cnfg_optns.snd_macs[0],mac,ETH_ALEN);
+        sscanf(DSTADDRAXSY,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(drivesim->cnfg_optns.snd_macs[1],mac,ETH_ALEN);
+        sscanf(DSTADDRAXSZ,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(drivesim->cnfg_optns.snd_macs[2],mac,ETH_ALEN);
+        sscanf(DSTADDRAXSS,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(drivesim->cnfg_optns.snd_macs[3],mac,ETH_ALEN);
         
         //open send socket
         drivesim->txsckt = opntxsckt();
@@ -405,7 +406,7 @@ int snd_axsmsg(struct tsndrive_t* drivesim, struct sockaddr_ll *snd_addr, struct
                 return 1;       //fail
         }
         ok += setpkt(snd_pkt,1,AXS);
-        ok += fillaxspkt(snd_pkt,&axsnfo,*seqno);
+        ok += fillaxspkt(snd_pkt,axsnfo,*seqno);
         ok += fillmsghdr(&snd_msghdr,snd_addr,cnvrt_tmspc2int64(&axs_txtime),CLOCK_TAI);
         if (ok != 0){
                 printf("Error in filling sending packet or corresponding headers.\n");

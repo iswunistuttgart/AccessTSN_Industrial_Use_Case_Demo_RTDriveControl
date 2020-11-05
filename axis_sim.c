@@ -89,7 +89,7 @@ void axs_fineclcpstn(struct axis_t* axs, double tmstp, uint32_t iters)
 
 void axs_enbl(struct axis_t* axs)
 {
-        clr_flt(axs);
+        axs_clrflt(axs);
         axs->enbl = true;
 }
 
@@ -111,7 +111,7 @@ void axs_clrflt(struct axis_t* axs)
 
 int axes_updt_setvel(struct axis_t* axes[], uint8_t num_axs, const struct cntrlnfo_t *cntrlnfo)
 {
-        struct axsnfo_t* set_axsnfo = NULL;
+        const struct axsnfo_t* set_axsnfo = NULL;
         for (int i = 0; i< num_axs;i++) {
                 switch(axes[i]->axs) {
                 case x:
@@ -137,7 +137,7 @@ int axes_updt_setvel(struct axis_t* axes[], uint8_t num_axs, const struct cntrln
 /* update enable of all simualted axes */
 int axes_updt_enbl(struct axis_t* axes[], uint8_t num_axs, const struct cntrlnfo_t *cntrlnfo)
 {
-        struct axsnfo_t* set_axsnfo = NULL;
+        const struct axsnfo_t* set_axsnfo = NULL;
         for (int i = 0; i< num_axs;i++) {
                 switch(axes[i]->axs) {
                 case x:

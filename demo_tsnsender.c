@@ -47,7 +47,7 @@ struct cnfg_optns_t{
         uint32_t sndoffst;
         uint32_t rcvoffst;
         uint32_t rcvwndw;
-        uint8_t * dstaddr;
+        char * dstaddr;
         char * ifname;
         char *rcv_macs[4];
         uint8_t num_rcvmacs;
@@ -493,25 +493,27 @@ int main(int argc, char* argv[])
 {
         struct tsnsender_t sender;
         int ok;
+        unsigned char mac[ETH_ALEN];
 
         //set standard values
-        sender.cnfg_optns.dstaddr = calloc(ETH_ALEN,sizeof(uint8_t));
-        sender.cnfg_optns.dstaddr[0] = 0x01;
-        sender.cnfg_optns.dstaddr[1] = 0xAC;
-        sender.cnfg_optns.dstaddr[2] = 0xCE;
-        sender.cnfg_optns.dstaddr[3] = 0x55;
-        sender.cnfg_optns.dstaddr[4] = 0x00;
-        sender.cnfg_optns.dstaddr[5] = 0x00;
+        sender.cnfg_optns.dstaddr = calloc(ETH_ALEN,sizeof(char));
+
+        sscanf(DSTADDRCNTRL,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(sender.cnfg_optns.dstaddr,mac,ETH_ALEN);
 
         sender.cnfg_optns.rcv_macs[0] = calloc(ETH_ALEN,sizeof(char));
         sender.cnfg_optns.rcv_macs[1] = calloc(ETH_ALEN,sizeof(char));
         sender.cnfg_optns.rcv_macs[2] = calloc(ETH_ALEN,sizeof(char));
         sender.cnfg_optns.rcv_macs[3] = calloc(ETH_ALEN,sizeof(char));
 
-        sender.cnfg_optns.rcv_macs[0] = DSTADDRAXSX;
-        sender.cnfg_optns.rcv_macs[1] = DSTADDRAXSY;
-        sender.cnfg_optns.rcv_macs[2] = DSTADDRAXSZ;
-        sender.cnfg_optns.rcv_macs[3] = DSTADDRAXSS;
+        sscanf(DSTADDRAXSX,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(sender.cnfg_optns.rcv_macs[0],mac,ETH_ALEN);
+        sscanf(DSTADDRAXSY,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(sender.cnfg_optns.rcv_macs[1],mac,ETH_ALEN);
+        sscanf(DSTADDRAXSZ,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(sender.cnfg_optns.rcv_macs[2],mac,ETH_ALEN);
+        sscanf(DSTADDRAXSS,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        strncpy(sender.cnfg_optns.rcv_macs[3],mac,ETH_ALEN);
         sender.cnfg_optns.num_rcvmacs = 4;
 
 
