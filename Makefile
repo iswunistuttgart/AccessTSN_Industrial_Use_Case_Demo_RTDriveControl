@@ -13,7 +13,7 @@ LDIR=../lib
 
 LIBS=-pthread -lrt
 
-_OBJ = packet_handler.o axisshm_handler.o time_calc.o
+_OBJ = packet_handler.o axisshm_handler.o time_calc.o axis_sim.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.c 
@@ -24,10 +24,13 @@ all: demo_tsnsender
 demo_tsnsender: demo_tsnsender.c obj/packet_handler.o obj/axisshm_handler.o obj/time_calc.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
+demo_tsndrive: demo_tsndrive.c obj/packet_handler.o obj/axis_sim.o obj/time_calc.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
 recv_test: tests/recv_test.c obj/packet_handler.o obj/time_calc.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core demoapps_common/*~ demo_tsnsender tests/recv_test
+	rm -f $(ODIR)/*.o *~ core demoapps_common/*~ demo_tsnsender demo_tsndrive tests/recv_test
