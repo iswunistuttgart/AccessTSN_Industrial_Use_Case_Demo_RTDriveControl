@@ -284,6 +284,7 @@ int cleanup(struct tsnsender_t *sender)
 
         //close shared memory
         clscntrlShM(&(sender->txshm));
+        clsaxsShM(&(sender->rxshm));
 
         //free allocated memory for packets
         ok += destroypktstrg(&(sender->pkts));
