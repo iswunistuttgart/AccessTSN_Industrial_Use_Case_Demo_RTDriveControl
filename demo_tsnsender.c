@@ -290,9 +290,12 @@ int cleanup(struct tsnsender_t *sender)
         ok += destroypktstrg(&(sender->pkts));
 
         free(sender->cnfg_optns.dstaddr);
-        for (int i = 0;i<sender->cnfg_optns.num_rcvmacs;i++)
-                free(sender->cnfg_optns.rcv_macs[i]);
-
+        for (int i = 0;i<4;i++){
+                if (sender->cnfg_optns.rcv_macs[i] != NULL) {
+                        free(sender->cnfg_optns.rcv_macs[i]);
+                        sender->cnfg_optns.rcv_macs[i] =NULL;
+                }
+        }
         return ok;
 }
 
