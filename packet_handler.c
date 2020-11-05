@@ -156,6 +156,25 @@ int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seq
         return ok;
 }
 
+int fillaxspkt(struct rt_pkt_t* pkt, struct axsnfo_t* axsnfo, uint16_t seqno)
+{
+        int64_t tmp;
+        struct timespec time;
+        int ok = 0;
+        pkt->grp_hdr->seqNo = htons(seqno);
+        //check for current limitation that only one control message is supported
+        if(pkt->pyld_hdr->msgcnt != 1)
+                return 1; //fail
+        pkt->pyld_hdr->wrtrId = htons(WRITERID_AXX);
+        ok += dbl2nint64(axsnfo->cntrlvl,&tmp);
+        pkt->dtstmsg[0].dtstmsg_axs.pos_cur = htobe64(tmp);
+        pkt->dtstmsg[0].dtstmsg_axs.fault = (uint8_t) axsnfo->cntrlsw;
+
+        clock_gettime(CLOCK_TAI,&time);
+        pkt->extntwrkmsg_hdr->timestamp = cnvrt_tmspc2uatm(time);
+        return 0;
+}
+
 int dbl2nint64(double val, int64_t* res)
 {
         if((val > DBLOVERFLOW) || (val < -1*DBLOVERFLOW))
@@ -444,10 +463,30 @@ int prsdtstmsg(struct rt_pkt_t* pkt, enum msgtyp_t pkttyp, union dtstmsg_t *dtst
 int prsaxsmsg(union dtstmsg_t *dtstmsg, struct axsnfo_t * axsnfo)
 {
         //TODO check Datasetflags
-        if(dtstmsg->dtstmsg_axs.fldcnt != 2)    //identifier if truly axis-dataset-message
+        if(dtstmsg->dtstmsg_axs.fldcnt != ntohs(2))    //identifier if truly axis-dataset-message
                 return 1;       //fail
-        axsnfo->cntrlsw = dtstmsg->dtstmsg_axs.fault;
-        axsnfo->cntrlvl = dtstmsg->dtstmsg_axs.pos_cur;
+        axsnfo->cntrlsw = (bool) dtstmsg->dtstmsg_axs.fault;
+        axsnfo->cntrlvl = nint642dbl(dtstmsg->dtstmsg_axs.pos_cur);
+
+        return 0;
+}
+
+int prscntrlmsg(union dtstmsg_t *dtstmsg, struct cntrlnfo_t * cntrlnfo)
+{
+        //TODO check Datasetflags
+        if(dtstmsg->dtstmsg_axs.fldcnt != ntohs(11))    //identifier if truly axis-dataset-message
+                return 1;       //fail
+        cntrlnfo->x_set.cntrlvl = nint642dbl(dtstmsg->dtstmsg_cntrl.xvel_set);
+        cntrlnfo->x_set.cntrlsw = (bool) dtstmsg->dtstmsg_cntrl.xenable;
+        cntrlnfo->y_set.cntrlvl = nint642dbl(dtstmsg->dtstmsg_cntrl.yvel_set);
+        cntrlnfo->y_set.cntrlsw = (bool) dtstmsg->dtstmsg_cntrl.yenable;
+        cntrlnfo->z_set.cntrlvl = nint642dbl(dtstmsg->dtstmsg_cntrl.zvel_set);
+        cntrlnfo->z_set.cntrlsw = (bool) dtstmsg->dtstmsg_cntrl.zenable;
+        cntrlnfo->s_set.cntrlvl = nint642dbl(dtstmsg->dtstmsg_cntrl.spindlespeed);
+        cntrlnfo->s_set.cntrlsw = (bool) dtstmsg->dtstmsg_cntrl.spindleenable;
+        cntrlnfo->spindlebrake = (bool) dtstmsg->dtstmsg_cntrl.spindlebrake;
+        cntrlnfo->estopstatus = (bool) dtstmsg->dtstmsg_cntrl.estopstatus;
+        cntrlnfo->machinestatus = (bool) dtstmsg->dtstmsg_cntrl.machinestatus;
 
         return 0;
 }

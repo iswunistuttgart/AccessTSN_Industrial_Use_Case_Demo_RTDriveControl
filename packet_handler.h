@@ -224,6 +224,10 @@ void initpkthdrs(struct rt_pkt_t* pkt);
  * correct number of message (1)*/
 int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seqno);
 
+/* fill packet with information from axs, packet must already have the
+ * correct number of message (1)*/
+int fillaxspkt(struct rt_pkt_t* pkt, struct axsnfo_t* axsnfo, uint16_t seqno);
+
 /* converts double to int64 by changing the unit to nano units
  * e.g. multiplying by 10^9, keeping the sign */
 int dbl2nint64(double val, int64_t *res);
@@ -271,6 +275,9 @@ int prsdtstmsg(struct rt_pkt_t* pkt, enum msgtyp_t pkttyp, union dtstmsg_t *dtst
 
 /* parse axis information from datasetmessage */
 int prsaxsmsg(union dtstmsg_t *dtstmsg, struct axsnfo_t * axsnfo);
+
+/* parse control information from datasetmessage */
+int prscntrlmsg(union dtstmsg_t *dtstmsg, struct cntrlnfo_t * cntrlnfo);
 
 
 /* ##### PacketStore ###### */
