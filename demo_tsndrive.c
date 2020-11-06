@@ -93,9 +93,10 @@ static void usage(char *appname)
                 " -o [nanosec]         Specifies the sending offset, time between start of cycle and sending slot in nano seconds.\n"
                 " -r [nanosec]         Specifies the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
                 " -w [nanosec]         Specifies the receive window duration, timeinterval in which a packet is expected in nano seconds.\n"
+                " -s [nanosec]         Specifies the send window duration, timeinterval between 2 axis-packets in nano seconds.\n"
                 " -i [name]            Name of the Networkinterface to use.\n"
                 " -n [value < 5]       Number of simulated axes. Default 4.\n"
-                " -a [index < 3]       Index of the first simulated axis. x = 0, y = 1, z = 2, spindle = 3. Default 0."
+                " -a [index < 4]       Index of the first simulated axis. x = 0, y = 1, z = 2, spindle = 3. Default 0.\n"
                 " -h                   Prints this help message and exits\n"
                 "\n",
                 appname);
@@ -107,7 +108,7 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
         int c;
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:i:n:"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:s:i:n:a:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspc(atof(optarg), &(drivesim->cnfg_optns.basetm));
@@ -123,6 +124,9 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
                         break;
                 case 'w':
                         (*drivesim).cnfg_optns.rcvwndw = atoi(optarg);
+                        break;
+                case 's':
+                        (*drivesim).cnfg_optns.sndwndw = atoi(optarg);
                         break;
                 case 'i':
                         (*drivesim).cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
@@ -140,18 +144,18 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
                         exit(0);
                         break;
                 }
-                if ((*drivesim).cnfg_optns.num_axs > 4) {
-                        printf("Number of simulated Axis to high! Maximum 4.\n");
-                        exit(0);
-                }
-                if ((*drivesim).cnfg_optns.frst_axs > 3) {
-                        printf("Axis index to high! Maximum 4.\n");
-                        exit(0);
-                }
-                if (((*drivesim).cnfg_optns.frst_axs + (*drivesim).cnfg_optns.num_axs) > 4) {
-                        printf("Combination of Axis index and number of simulation Axis to high!\n");
-                        exit(0);
-                }
+        }
+        if ((*drivesim).cnfg_optns.num_axs > 4) {
+                printf("Number of simulated Axis to high! Maximum 4.\n");
+                exit(0);
+        }
+        if ((*drivesim).cnfg_optns.frst_axs > 3) {
+                printf("Axis index to high! Maximum 4.\n");
+                exit(0);
+        }
+        if (((*drivesim).cnfg_optns.frst_axs + (*drivesim).cnfg_optns.num_axs) > 4) {
+                printf("Combination of Axis index and number of simulation Axis to high!\n");
+                exit(0);   
         }
 }
 
@@ -455,12 +459,26 @@ void *rt_thrd(void *tsndrivesim)
         frst_txtime = clc_txtm(&est,drivesim->cnfg_optns.sndoffst,SENDINGSTACK_DURATION);
         wkuprcvtm = clc_rcvwkuptm(&est,drivesim->cnfg_optns.rcvoffst,RECEIVINGSTACK_DURATION,APPRECVWAKEUP,MAXWAKEUPJITTER);
 
+        ok = 0;
+        while (cmptmspc_Ab4rB(&frst_txtime, &wkuprcvtm)) {
+                inc_tm(&frst_txtime,drivesim->cnfg_optns.intrvl_ns);
+                ok++;
+        }
+        if (ok > 0)
+                printf("WARNING: Sending time of packets before wakeup for receving packet.\n"
+                       "         Answers to received packet will be delayed by %d cycle(s). \n"
+                       "         To fix this, adjust network schedule and/or reduce stack calculation time.\n", ok);
+
         //sleep till first wakeup time
         clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
         
+        ok = 0;
 	int cyclecnt =0;
         //while loop
         while(cyclecnt < 10000){
+                clock_gettime(CLOCK_TAI,&curtm);
+		printf("Current Time: %lld.%.09ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
+		cyclecnt++;
                 
                 //receive control message
                 rcv_ok = rcv_cntrlmsg(drivesim,&rcv_cntrlnfo);      //TODO: what if more then one packet has arrived within timeframe
