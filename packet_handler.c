@@ -577,7 +577,7 @@ int retusedpkt(struct pktstore_t *pktstore, struct rt_pkt_t** pkt)
         }
         if(NULL != *pkt)
                 return 1;       //fail
-        return 1;       //succeded
+        return 0;       //succeded
 }
 
 /* ##### END PacketStore ##### */
