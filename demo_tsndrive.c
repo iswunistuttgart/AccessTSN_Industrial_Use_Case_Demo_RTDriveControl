@@ -177,26 +177,35 @@ int init(struct tsndrive_t *drivesim)
         int ok = 0;
         struct sched_param param;
         unsigned char mac[ETH_ALEN];
-
+        
         //set addresses
         //set standard values
-        drivesim->cnfg_optns.rcvaddr[0] = calloc(ETH_ALEN,sizeof(char));
+        memset(&mac,0,sizeof(char)*ETH_ALEN);
+        drivesim->cnfg_optns.rcvaddr[0] = calloc(ETH_ALEN+1,sizeof(char));
         sscanf(DSTADDRCNTRL,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(drivesim->cnfg_optns.rcvaddr[0],mac,ETH_ALEN);
+        memcpy(drivesim->cnfg_optns.rcvaddr[0],mac,ETH_ALEN);
 
-        drivesim->cnfg_optns.snd_macs[0] = calloc(ETH_ALEN,sizeof(char));
-        drivesim->cnfg_optns.snd_macs[1] = calloc(ETH_ALEN,sizeof(char));
-        drivesim->cnfg_optns.snd_macs[2] = calloc(ETH_ALEN,sizeof(char));
-        drivesim->cnfg_optns.snd_macs[3] = calloc(ETH_ALEN,sizeof(char));
-
+        drivesim->cnfg_optns.snd_macs[0] = calloc(ETH_ALEN+1,sizeof(char));
+        drivesim->cnfg_optns.snd_macs[1] = calloc(ETH_ALEN+1,sizeof(char));
+        drivesim->cnfg_optns.snd_macs[2] = calloc(ETH_ALEN+1,sizeof(char));
+        drivesim->cnfg_optns.snd_macs[3] = calloc(ETH_ALEN+1,sizeof(char));
+        memset(&mac,0,sizeof(char)*ETH_ALEN+1);
         sscanf(DSTADDRAXSX,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(drivesim->cnfg_optns.snd_macs[0],mac,ETH_ALEN);
+        memcpy(drivesim->cnfg_optns.snd_macs[0],mac,ETH_ALEN);
+                
+       
+        memset(&mac,0,sizeof(char)*ETH_ALEN+1);
         sscanf(DSTADDRAXSY,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(drivesim->cnfg_optns.snd_macs[1],mac,ETH_ALEN);
+        memcpy(drivesim->cnfg_optns.snd_macs[1],mac,ETH_ALEN);
+
+        
+        memset(&mac,0,sizeof(char)*ETH_ALEN+1);
         sscanf(DSTADDRAXSZ,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(drivesim->cnfg_optns.snd_macs[2],mac,ETH_ALEN);
+        memcpy(drivesim->cnfg_optns.snd_macs[2],mac,ETH_ALEN);
+        
+        memset(&mac,0,sizeof(char)*ETH_ALEN+1);
         sscanf(DSTADDRAXSS,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(drivesim->cnfg_optns.snd_macs[3],mac,ETH_ALEN);
+        memcpy(drivesim->cnfg_optns.snd_macs[3],mac,ETH_ALEN);
         
         //open send socket
         drivesim->txsckt = opntxsckt();
@@ -451,6 +460,10 @@ void *rt_thrd(void *tsndrivesim)
         for (int i = 0; i < drivesim->cnfg_optns.num_axs;i++) {
                 ok = fillethaddr(&(snd_addrs[i]), drivesim->cnfg_optns.snd_macs[drivesim->cnfg_optns.frst_axs + i], ETHERTYPE, drivesim->txsckt, drivesim->cnfg_optns.ifname);
         }
+        /*for (int i = 0;i <4;i++) {
+                printf("index: %d, cnfgmac: %02x:%02x:%02x:%02x:%02x:%02x; ", i, drivesim->cnfg_optns.snd_macs[i][0],drivesim->cnfg_optns.snd_macs[i][1],drivesim->cnfg_optns.snd_macs[i][2],drivesim->cnfg_optns.snd_macs[i][3],drivesim->cnfg_optns.snd_macs[i][4],drivesim->cnfg_optns.snd_macs[i][5]);
+                printf("snd_addrs mac: %02x:%02x:%02x:%02x:%02x:%02x \n", snd_addrs[i].sll_addr[0],snd_addrs[i].sll_addr[1],snd_addrs[i].sll_addr[2],snd_addrs[i].sll_addr[3],snd_addrs[i].sll_addr[4],snd_addrs[i].sll_addr[5]);
+        }*/
 
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods) */

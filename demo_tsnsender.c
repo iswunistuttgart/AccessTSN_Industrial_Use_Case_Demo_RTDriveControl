@@ -499,7 +499,7 @@ int main(int argc, char* argv[])
         sender.cnfg_optns.dstaddr = calloc(ETH_ALEN,sizeof(char));
 
         sscanf(DSTADDRCNTRL,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(sender.cnfg_optns.dstaddr,mac,ETH_ALEN);
+        memcpy(sender.cnfg_optns.dstaddr,mac,ETH_ALEN);
 
         sender.cnfg_optns.rcv_macs[0] = calloc(ETH_ALEN,sizeof(char));
         sender.cnfg_optns.rcv_macs[1] = calloc(ETH_ALEN,sizeof(char));
@@ -507,13 +507,13 @@ int main(int argc, char* argv[])
         sender.cnfg_optns.rcv_macs[3] = calloc(ETH_ALEN,sizeof(char));
 
         sscanf(DSTADDRAXSX,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(sender.cnfg_optns.rcv_macs[0],mac,ETH_ALEN);
+        memcpy(sender.cnfg_optns.rcv_macs[0],mac,ETH_ALEN);
         sscanf(DSTADDRAXSY,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(sender.cnfg_optns.rcv_macs[1],mac,ETH_ALEN);
+        memcpy(sender.cnfg_optns.rcv_macs[1],mac,ETH_ALEN);
         sscanf(DSTADDRAXSZ,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(sender.cnfg_optns.rcv_macs[2],mac,ETH_ALEN);
+        memcpy(sender.cnfg_optns.rcv_macs[2],mac,ETH_ALEN);
         sscanf(DSTADDRAXSS,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        strncpy(sender.cnfg_optns.rcv_macs[3],mac,ETH_ALEN);
+        memcpy(sender.cnfg_optns.rcv_macs[3],mac,ETH_ALEN);
         sender.cnfg_optns.num_rcvmacs = 4;
 
 
