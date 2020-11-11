@@ -171,7 +171,15 @@ int init(struct tsnsender_t *sender)
 
         //open shared memory
         sender->txshm = opnShM_cntrlnfo();
+        if(sender->txshm == NULL) {
+                printf("open of TX sharedmemory failed\n");
+                return 1;
+        };
         sender->rxshm = opnShM_axsnfo();
+        if(sender->txshm == NULL) {
+                printf("open of RX sharedmemory failed\n");
+                return 1;
+        };
 
         //allocate memory for packets
         ok += initpktstrg(&(sender->pkts),5);
@@ -427,14 +435,14 @@ void *rx_thrd(void *tsnsender)
                         rcv_cnt = 1;
                 }
 
-                clock_gettime(CLOCK_TAI,&curtm);
-		printf("RX Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
-		cyclecnt++;
-
                 //check for RX-packet
                 ok = poll(fds,1,tmout);         //TODO fix if rcvwidndow smaller thatn milli second etc.
                 if (ok <= 0)
                         continue;       //TODO make cycle fitting
+
+                clock_gettime(CLOCK_TAI,&curtm);
+		printf("RX Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
+		cyclecnt++;
                
                 //receive paket
                 ok = getfreepkt(&(sender->pkts),&rcvd_pkt);
@@ -458,8 +466,8 @@ void *rx_thrd(void *tsnsender)
                 }
                 //parse RX-packet
                 ok = prspkt(rcvd_pkt, &msg_typ);
-                if ((ok == 1) || (msg_typ != AXS)) {
-                        printf("Parsing of received packet failed, or packet not a AXS-packet.\n");
+                if ((ok == -1) || (msg_typ != AXS)) {
+                        printf("Parsing of received packet failed, or packet not a AXS-packet. typ %d; ok: %d\n",msg_typ, ok);
                         retusedpkt(&(sender->pkts),&rcvd_pkt);
                         continue;
                 }
@@ -478,6 +486,7 @@ void *rx_thrd(void *tsnsender)
                                 //only one datasetmsg in packet, axs differentation through rcvmac
                                 axs_nfo.axsID = i;
                         }
+                        printf("write axisinfo to shm for axis %d, value %f\n",axs_nfo.axsID,axs_nfo.cntrlvl);
                         ok =  wrt_axsinfo2shm(&axs_nfo, sender->rxshm);
                         dtstmsgs[i] = NULL;
                 }
