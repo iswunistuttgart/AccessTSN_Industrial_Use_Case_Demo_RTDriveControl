@@ -216,7 +216,7 @@ int init(struct tsndrive_t *drivesim)
         }
 
         //open recv socket
-        drivesim->rxsckt = opnrxsckt(drivesim->cnfg_optns.ifname,drivesim->cnfg_optns.snd_macs,drivesim->cnfg_optns.num_axs);
+        drivesim->rxsckt = opnrxsckt(drivesim->cnfg_optns.ifname,drivesim->cnfg_optns.rcvaddr,1);
         if (drivesim->rxsckt < 0) {
                 printf("RX Socket open failed. \n");
                 drivesim->rxsckt = 0;
@@ -336,10 +336,10 @@ int rcv_cntrlmsg(struct tsndrive_t* drivesim,struct cntrlnfo_t * cntrlnfo)
         int dtstmsgcnt;
 
         //check for RX-packet
-        ok = poll(fds,1,drivesim->cnfg_optns.rcvwndw);
+        ok = poll(fds,1,drivesim->cnfg_optns.rcvwndw/1000000);  //timeout in milliseconds -> TODO fix this with fitting value (from calculation)
         if (ok <= 0)
                 return -1;       //TODO make cycle fitting
-        
+        printf("Packet received\n");
         //receive paket
         ok = getfreepkt(&(drivesim->pkts),&rcvd_pkt);
         if (ok == 1) {
@@ -362,8 +362,8 @@ int rcv_cntrlmsg(struct tsndrive_t* drivesim,struct cntrlnfo_t * cntrlnfo)
         }
         //parse RX-packet
         ok = prspkt(rcvd_pkt, &msg_typ);
-        if ((ok == 1) || (msg_typ != CNTRL)) {
-                printf("Parsing of received packet failed, or packet not a AXS-packet.\n");
+        if ((ok == -1) || (msg_typ != CNTRL)) {
+                printf("Parsing of received packet failed, or packet not a CNTRL-packet. type %d; ok: %d\n", msg_typ, ok);
                 retusedpkt(&(drivesim->pkts),&rcvd_pkt);
                 return -1;       //continue
         }

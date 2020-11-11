@@ -338,6 +338,7 @@ void *rt_thrd(void *tsnsender)
 
                 //get TX values from shared memory
                 ok = rd_shm2cntlinfo(sender->txshm, &snd_cntrlnfo);
+                printf("tx shmemory accessed\n");
 
                 //get and fill TX-Packet
                 ok = getfreepkt(&(sender->pkts),&snd_pkt);       //maybe change to one static packet in thread to avoid competing access to paket store from rx and tx threads
@@ -427,14 +428,14 @@ void *rx_thrd(void *tsnsender)
                 }
 
                 clock_gettime(CLOCK_TAI,&curtm);
-		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
+		printf("RX Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
 		cyclecnt++;
 
                 //check for RX-packet
-                ok = poll(fds,1,tmout);
+                ok = poll(fds,1,tmout);         //TODO fix if rcvwidndow smaller thatn milli second etc.
                 if (ok <= 0)
                         continue;       //TODO make cycle fitting
-                
+               
                 //receive paket
                 ok = getfreepkt(&(sender->pkts),&rcvd_pkt);
                 if (ok == 1) {
@@ -538,8 +539,9 @@ int main(int argc, char* argv[])
 
         //start rt-thread   
         /* Create a pthread with specified attributes */
-  //      ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, (void*)&sender);
-        rt_thrd((void*)&sender);
+        ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, (void*)&sender);
+        // rt_thrd((void*)&sender);
+        ok += pthread_create(&(sender.rx_thrd),&(sender.rxthrd_attr),(void*) rx_thrd, (void*) &sender);
         if (ok) {
                 printf("create pthread failed\n");
                 //cleanup
@@ -549,7 +551,7 @@ int main(int argc, char* argv[])
  
         /* Join the thread and wait until it is done */
 	int ret;
-//        ret = pthread_join((sender.rt_thrd), NULL);
+        ret = pthread_join((sender.rx_thrd), NULL);
         if (ret)
                 printf("join pthread failed: %m\n");
         
