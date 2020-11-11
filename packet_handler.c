@@ -359,7 +359,7 @@ int chckethhdr(struct rt_pkt_t* pkt, char *mac_addrs[], int no_macs)
                 return -1;       //fail
         
         for (int i = 0; i<no_macs; i++) {
-                if(strncmp((rcvd_ethhdr->dstmac), mac_addrs[i], ETH_ALEN) == 0)
+                if(memcmp((rcvd_ethhdr->dstmac), mac_addrs[i], ETH_ALEN) == 0)
                         return i;       //succeed
         }
         return -1;       //fail
@@ -397,7 +397,11 @@ int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
                 //for msgcnt = 1, sizearray is ommitted
                 pkt->szrry = NULL;
                 msgfldsz = 0;
-                dtstmsgsz = pkt->len - sizeof(struct eth_hdr_t) - sizeof(struct ntwrkmsg_hdr_t) - sizeof(struct grp_hdr_t) - sizeof(struct extntwrkmsg_hdr_t) - sizeof(pkt->pyld_hdr->msgcnt) - msgcnt*sizeof(pkt->pyld_hdr->wrtrId) - msgfldsz;
+                if (pkt->len == ETH_ZLEN){
+                        dtstmsgsz = sizeof(struct dtstmsg_axs_t);       //axis message is shorter than minimal eth packet length -> padding has been added
+                } else {
+                        dtstmsgsz = pkt->len - sizeof(struct eth_hdr_t) - sizeof(struct ntwrkmsg_hdr_t) - sizeof(struct grp_hdr_t) - sizeof(struct extntwrkmsg_hdr_t) - sizeof(pkt->pyld_hdr->msgcnt) - msgcnt*sizeof(pkt->pyld_hdr->wrtrId) - msgfldsz;
+                }
         } else {
                 //for msgcnt >1, set sizes of datasetmessages in sizearray
                 pkt->szrry = (struct szrry_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct ntwrkmsg_hdr_t));
