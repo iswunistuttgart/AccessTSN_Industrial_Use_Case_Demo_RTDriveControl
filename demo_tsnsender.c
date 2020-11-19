@@ -59,6 +59,8 @@ struct tsnsender_t {
         int txsckt;
         struct mk_mainoutput *txshm;
         struct mk_maininput *rxshm;
+        sem_t* txshm_sem;
+        sem_t* rxshm_sem;
         struct pktstore_t pkts;
         pthread_attr_t rtthrd_attr;
         pthread_t rt_thrd;
@@ -170,12 +172,12 @@ int init(struct tsnsender_t *sender)
         }
 
         //open shared memory
-        sender->txshm = opnShM_cntrlnfo();
+        sender->txshm = opnShM_cntrlnfo(&sender->txshm_sem);
         if(sender->txshm == NULL) {
                 printf("open of TX sharedmemory failed\n");
                 return 1;
         };
-        sender->rxshm = opnShM_axsnfo();
+        sender->rxshm = opnShM_axsnfo(&sender->rxshm_sem);
         if(sender->txshm == NULL) {
                 printf("open of RX sharedmemory failed\n");
                 return 1;
@@ -291,8 +293,8 @@ int cleanup(struct tsnsender_t *sender)
         ok += close(sender->txsckt);
 
         //close shared memory
-        clscntrlShM(&(sender->txshm));
-        clsaxsShM(&(sender->rxshm));
+        ok += clscntrlShM(&(sender->txshm),&sender->txshm_sem);
+        ok += clsaxsShM(&(sender->rxshm),&sender->rxshm_sem);
 
         //free allocated memory for packets
         ok += destroypktstrg(&(sender->pkts));
@@ -322,6 +324,7 @@ void *rt_thrd(void *tsnsender)
         uint16_t snd_seqno = 0;
         
         struct timespec curtm;
+        struct timespec cntrlrd_tmout;
 
         //init sending address since it will be static
         ok = fillethaddr(&snd_addr, sender->cnfg_optns.dstaddr, ETHERTYPE, sender->txsckt, sender->cnfg_optns.ifname);
@@ -332,6 +335,8 @@ void *rt_thrd(void *tsnsender)
         clc_est(&wkupsndtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &est);      //check if added period is enough time buffer, maybe increase to two
         txtime = clc_txtm(&est,sender->cnfg_optns.sndoffst,SENDINGSTACK_DURATION);
         wkupsndtm = clc_sndwkuptm(&txtime,APPSENDWAKEUP,MAXWAKEUPJITTER);
+        tmspc_cp(&cntrlrd_tmout,&wkupsndtm);
+        inc_tm(&cntrlrd_tmout,APPSENDWAKEUP/2);
 
         //sleep till first wakeup time
         clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkupsndtm, NULL);
@@ -345,7 +350,7 @@ void *rt_thrd(void *tsnsender)
 		cyclecnt++;
 
                 //get TX values from shared memory
-                ok = rd_shm2cntlinfo(sender->txshm, &snd_cntrlnfo);
+                ok = rd_shm2cntlinfo(sender->txshm, &snd_cntrlnfo, sender->txshm_sem, &cntrlrd_tmout);
                 printf("tx shmemory accessed\n");
 
                 //get and fill TX-Packet
@@ -374,7 +379,8 @@ void *rt_thrd(void *tsnsender)
                 //calculate next TxTime-Stamp and next wakeuptime
                 txtime = clc_txtm(&est,sender->cnfg_optns.sndoffst,SENDINGSTACK_DURATION);
                 wkupsndtm = clc_sndwkuptm(&txtime,APPSENDWAKEUP,MAXWAKEUPJITTER);
-
+                tmspc_cp(&cntrlrd_tmout,&wkupsndtm);
+                inc_tm(&cntrlrd_tmout,APPSENDWAKEUP/2);
                 //sleep until the next cycle
                 clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkupsndtm, NULL);
         }
@@ -403,12 +409,17 @@ void *rx_thrd(void *tsnsender)
         union dtstmsg_t *dtstmsgs[4] = {NULL,NULL,NULL,NULL};
         int dtstmsgcnt;
         struct axsnfo_t axs_nfo;
+        struct timespec axswrt_tmout;
+        uint32_t axswrt_tmoutfrac;
+        axswrt_tmoutfrac = sender->cnfg_optns.intrvl_ns/(sender->cnfg_optns.num_rcvmacs+1);
                 
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods), calculated fitting offset to recv */
         clock_gettime(CLOCK_TAI,&wkuprcvtm);
         clc_est(&wkuprcvtm,&(sender->cnfg_optns.basetm), sender->cnfg_optns.intrvl_ns, &est);
         wkuprcvtm = clc_rcvwkuptm(&est,sender->cnfg_optns.rcvoffst,RECEIVINGSTACK_DURATION,APPRECVWAKEUP,MAXWAKEUPJITTER);
+        tmspc_cp(&axswrt_tmout,&wkuprcvtm);
+        inc_tm(&axswrt_tmout,axswrt_tmoutfrac);
                 
 	int cyclecnt = 0;
         //while loop
@@ -429,7 +440,8 @@ void *rx_thrd(void *tsnsender)
                                 //if no (valid) packet arrives the receive could wait longer than a period
                                 inc_tm(&wkuprcvtm,sender->cnfg_optns.intrvl_ns);
                         }
-
+                        tmspc_cp(&axswrt_tmout,&wkuprcvtm);
+                        inc_tm(&axswrt_tmout,axswrt_tmoutfrac);
                         //sleep until the next cycle
                         clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
                         rcv_cnt = 1;
@@ -487,7 +499,8 @@ void *rx_thrd(void *tsnsender)
                                 axs_nfo.axsID = i;
                         }
                         printf("write axisinfo to shm for axis %d, value %f\n",axs_nfo.axsID,axs_nfo.cntrlvl);
-                        ok =  wrt_axsinfo2shm(&axs_nfo, sender->rxshm);
+                        ok =  wrt_axsinfo2shm(&axs_nfo, sender->rxshm,sender->rxshm_sem,&axswrt_tmout);
+                        inc_tm(&axswrt_tmout,axswrt_tmoutfrac);
                         dtstmsgs[i] = NULL;
                 }
 

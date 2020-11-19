@@ -79,6 +79,12 @@ bool cmptmspc_Ab4rB(const struct timespec *A, const struct timespec *B)
         return (A->tv_sec < B->tv_sec);
 }
 
+void tmspc_cp(struct timespec *res, const struct timespec *A)
+{
+        res->tv_sec = A->tv_sec;
+        res->tv_nsec = A->tv_nsec;
+}
+
 void tmspc_add(struct timespec *res, const struct timespec *A, const struct timespec *B)
 {
         res->tv_sec = A->tv_sec + B->tv_sec;

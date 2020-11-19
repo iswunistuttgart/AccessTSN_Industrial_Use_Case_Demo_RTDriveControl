@@ -44,6 +44,9 @@ void cnvrt_dbl2tmspc(double orgtm, struct timespec *newtm);
 /* compare two timespecs */
 bool cmptmspc_Ab4rB(const struct timespec *A, const struct timespec *B);
 
+/* copy Timespec (res = A)*/
+void tmspc_cp(struct timespec *res, const struct timespec *A);
+
 /* add Timespecs (A+B) */
 void tmspc_add(struct timespec *res, const struct timespec *A, const struct timespec *B);
 
