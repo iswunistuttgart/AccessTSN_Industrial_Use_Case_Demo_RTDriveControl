@@ -30,7 +30,13 @@ demo_tsndrive: demo_tsndrive.c obj/packet_handler.o obj/axis_sim.o obj/time_calc
 recv_test: tests/recv_test.c obj/packet_handler.o obj/time_calc.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
+posupdate_test: tests/posupdate_test.c obj/axis_sim.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
+drive_test: tests/demo_drive_test.c obj/axis_sim.o obj/time_calc.o obj/axisshm_handler.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core demoapps_common/*~ demo_tsnsender demo_tsndrive tests/recv_test
+	rm -f $(ODIR)/*.o *~ core demoapps_common/*~ demo_tsnsender demo_tsndrive tests/recv_test tests7drive_test
