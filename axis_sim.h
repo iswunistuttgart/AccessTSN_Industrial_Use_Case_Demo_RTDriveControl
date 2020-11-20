@@ -21,18 +21,18 @@
 #define T 1     // Timefactor
 #define d 0.5   // Damping
 
-#define X_MAX 0.3       //in m
-#define X_VEL 0.01        //in m/s
-#define X_START 0.15     //in m
-#define Y_MAX 0.3       //in m
-#define Y_VEL 0.01       //in m/s
-#define Y_START 0.15     //in m
-#define Z_MAX 0.3       //in m
-#define Z_VEL 0.01        //in m/s
-#define Z_START 0.15     //in m
-#define S_MAX 0.3       //in m
-#define S_VEL 0.01        //in m/s
-#define S_START 0.0     //in m
+#define X_MAX 300       //in mm
+#define X_VEL 1        //in m/s
+#define X_START 150     //in mm
+#define Y_MAX 300       //in mm
+#define Y_VEL 1       //in m/s
+#define Y_START 150     //in mm
+#define Z_MAX 300       //in mm
+#define Z_VEL 1        //in m/s
+#define Z_START 150     //in mm
+#define S_MAX 300       //in mm
+#define S_VEL 10        //in m/s
+#define S_START 0.0     //in mm
 
 #define FINEITERATIONS 10
 
