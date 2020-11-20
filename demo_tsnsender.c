@@ -59,8 +59,10 @@ struct tsnsender_t {
         int txsckt;
         struct mk_mainoutput *txshm;
         struct mk_maininput *rxshm;
+        struct mk_additionaloutput *atxshm;
         sem_t* txshm_sem;
         sem_t* rxshm_sem;
+        sem_t* atxshm_sem;
         struct pktstore_t pkts;
         pthread_attr_t rtthrd_attr;
         pthread_t rt_thrd;
@@ -155,6 +157,7 @@ int init(struct tsnsender_t *sender)
 {
         int ok = 0;
         struct sched_param param;
+
         //open send socket
         sender->txsckt = opntxsckt();
         if (sender->txsckt < 0) {
@@ -175,6 +178,11 @@ int init(struct tsnsender_t *sender)
         sender->txshm = opnShM_cntrlnfo(&sender->txshm_sem);
         if(sender->txshm == NULL) {
                 printf("open of TX sharedmemory failed\n");
+                return 1;
+        };
+        sender->atxshm = opnShM_addcntrlnfo(&sender->atxshm_sem);
+        if(sender->atxshm == NULL) {
+                printf("open of additional TX sharedmemory failed\n");
                 return 1;
         };
         sender->rxshm = opnShM_axsnfo(&sender->rxshm_sem);
@@ -294,6 +302,7 @@ int cleanup(struct tsnsender_t *sender)
 
         //close shared memory
         ok += clscntrlShM(&(sender->txshm),&sender->txshm_sem);
+        ok += clsaddcntrlShM(&(sender->atxshm),&sender->atxshm_sem);
         ok += clsaxsShM(&(sender->rxshm),&sender->rxshm_sem);
 
         //free allocated memory for packets
@@ -309,6 +318,10 @@ int cleanup(struct tsnsender_t *sender)
         return ok;
 }
 
+
+
+
+
 //Real time thread sender
 void *rt_thrd(void *tsnsender)
 {
@@ -321,10 +334,12 @@ void *rt_thrd(void *tsnsender)
         struct sockaddr_ll snd_addr;
         struct msghdr snd_msghdr;
         struct cntrlnfo_t snd_cntrlnfo;
+        memset(&snd_cntrlnfo,0, sizeof(struct cntrlnfo_t));
         uint16_t snd_seqno = 0;
         
         struct timespec curtm;
         struct timespec cntrlrd_tmout;
+        bool instrtup = true;
 
         //init sending address since it will be static
         ok = fillethaddr(&snd_addr, sender->cnfg_optns.dstaddr, ETHERTYPE, sender->txsckt, sender->cnfg_optns.ifname);
@@ -350,7 +365,7 @@ void *rt_thrd(void *tsnsender)
 		cyclecnt++;
 
                 //get TX values from shared memory
-                ok = rd_shm2cntlinfo(sender->txshm, &snd_cntrlnfo, sender->txshm_sem, &cntrlrd_tmout);
+                ok = rd_shm2cntrlinfo(sender->txshm, &snd_cntrlnfo, sender->txshm_sem, &cntrlrd_tmout);
                 printf("tx shmemory accessed\n");
 
                 //get and fill TX-Packet
@@ -360,7 +375,13 @@ void *rt_thrd(void *tsnsender)
                         return NULL;       //fail
                 }
                 ok += setpkt(snd_pkt,1,CNTRL);
+
+                if (instrtup){
+                        instrtup = axes_startup(sender->rxshm,sender->atxshm,sender->rxshm_sem,sender->atxshm_sem,&snd_cntrlnfo,&cntrlrd_tmout);
+                }
+                
                 ok += fillcntrlpkt(snd_pkt,&snd_cntrlnfo,snd_seqno);
+                
                 ok += fillmsghdr(&snd_msghdr,&snd_addr,cnvrt_tmspc2int64(&txtime),CLOCK_TAI);
                 if (ok != 0){
                         printf("Error in filling sending packet or corresponding headers.\n");

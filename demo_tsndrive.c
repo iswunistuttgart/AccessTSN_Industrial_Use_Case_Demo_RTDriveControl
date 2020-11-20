@@ -574,7 +574,7 @@ int main(int argc, char* argv[])
 	int ret;
 //        ret = pthread_join((sender.rt_thrd), NULL);
         if (ret)
-                printf("join pthread failed: %m\n");
+                printf("join pthread failed: m\n");
         
 
         //start pmc-thread

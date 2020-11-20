@@ -22,17 +22,13 @@
 #define d 0.5   // Damping
 
 #define X_MAX 300       //in mm
-#define X_VEL 1        //in m/s
-#define X_START 150     //in mm
+#define X_VEL 30        //in mm/min
 #define Y_MAX 300       //in mm
-#define Y_VEL 1       //in m/s
-#define Y_START 150     //in mm
+#define Y_VEL 30       //in mm/min
 #define Z_MAX 300       //in mm
-#define Z_VEL 1        //in m/s
-#define Z_START 150     //in mm
-#define S_MAX 300       //in mm
-#define S_VEL 10        //in m/s
-#define S_START 0.0     //in mm
+#define Z_VEL 30        //in mm/min
+#define S_MAX 300       
+#define S_VEL 10        
 
 #define FINEITERATIONS 10
 
@@ -78,6 +74,9 @@ int axes_updt_setvel(struct axis_t* axes[], uint8_t num_axs, const struct cntrln
 
 /* update enable of all simualted axes */
 int axes_updt_enbl(struct axis_t* axes[], uint8_t num_axs, const struct cntrlnfo_t *cntrlnfo);
+
+/* set startup position of axis */
+void axs_ststrtup(struct axis_t* axs, double start_pos);
 
 
 #endif /* _AXIS_SIM_H_ */

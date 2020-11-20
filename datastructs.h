@@ -25,7 +25,9 @@ enum axsID_t {
 /* struct for the information per axis, this can be either set point or current value */
 struct axsnfo_t {
         double cntrlvl;
-        bool cntrlsw;
+        double posset;
+        double poscur;
+        int8_t cntrlsw;
         enum axsID_t axsID;
 };
 

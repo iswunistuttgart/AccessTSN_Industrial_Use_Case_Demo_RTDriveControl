@@ -118,10 +118,10 @@ struct dtstmsg_cntrl_t{
 	int64_t yvel_set;		//double encoded as Int64
 	int64_t zvel_set;		//double encoded as Int64
 	int64_t spindlespeed;		//double encoded as Int64
-	uint8_t xenable;                //bool encoded as uint8			
-	uint8_t yenable;		//bool encoded as uint8		
-	uint8_t zenable;		//bool encoded as uint8		
-	uint8_t spindleenable;		//bool encoded as uint8	
+	int8_t xenable;                //int8			
+	int8_t yenable;		//int8		
+	int8_t zenable;		//int8		
+	int8_t spindleenable;		//int8	
 	uint8_t spindlebrake;		//bool encoded as uint8	
 	uint8_t machinestatus;		//bool encoded as uint8	
 	uint8_t estopstatus;            //bool encoded as uint8	

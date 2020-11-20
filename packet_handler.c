@@ -136,16 +136,16 @@ int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seq
         pkt->pyld_hdr->wrtrId = htons(WRITERID_CNTRL);
         ok += dbl2nint64(cntrlnfo->x_set.cntrlvl,&tmp);
         pkt->dtstmsg[0].dtstmsg_cntrl.xvel_set = htobe64(tmp);
-        pkt->dtstmsg[0].dtstmsg_cntrl.xenable = (uint8_t) cntrlnfo->x_set.cntrlsw;
+        pkt->dtstmsg[0].dtstmsg_cntrl.xenable = cntrlnfo->x_set.cntrlsw;
         ok += dbl2nint64(cntrlnfo->y_set.cntrlvl,&tmp);
         pkt->dtstmsg[0].dtstmsg_cntrl.yvel_set = htobe64(tmp);
-        pkt->dtstmsg[0].dtstmsg_cntrl.yenable = (uint8_t) cntrlnfo->y_set.cntrlsw;
+        pkt->dtstmsg[0].dtstmsg_cntrl.yenable = cntrlnfo->y_set.cntrlsw;
         ok += dbl2nint64(cntrlnfo->z_set.cntrlvl,&tmp);
         pkt->dtstmsg[0].dtstmsg_cntrl.zvel_set = htobe64(tmp);
-        pkt->dtstmsg[0].dtstmsg_cntrl.zenable = (uint8_t) cntrlnfo->z_set.cntrlsw;
+        pkt->dtstmsg[0].dtstmsg_cntrl.zenable = cntrlnfo->z_set.cntrlsw;
         ok += dbl2nint64(cntrlnfo->s_set.cntrlvl,&tmp);
         pkt->dtstmsg[0].dtstmsg_cntrl.spindlespeed = htobe64(tmp);
-        pkt->dtstmsg[0].dtstmsg_cntrl.spindleenable = (uint8_t) cntrlnfo->s_set.cntrlsw;
+        pkt->dtstmsg[0].dtstmsg_cntrl.spindleenable = cntrlnfo->s_set.cntrlsw;
         pkt->dtstmsg[0].dtstmsg_cntrl.spindlebrake = (uint8_t) cntrlnfo->spindlebrake;
         pkt->dtstmsg[0].dtstmsg_cntrl.machinestatus = (uint8_t) cntrlnfo->machinestatus;
         pkt->dtstmsg[0].dtstmsg_cntrl.estopstatus = (uint8_t) cntrlnfo->estopstatus;
@@ -155,7 +155,7 @@ int fillcntrlpkt(struct rt_pkt_t* pkt, struct cntrlnfo_t* cntrlnfo, uint16_t seq
 
         return ok;
 }
-
+ 
 int fillaxspkt(struct rt_pkt_t* pkt, struct axsnfo_t* axsnfo, uint16_t seqno)
 {
         int64_t tmp;

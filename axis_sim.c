@@ -29,22 +29,22 @@ int axes_initreq(struct axis_t* axes[], uint8_t no_axs, enum axsID_t strt_ID)
         
         switch (strt_ID) {
         case x:
-                axs_init(axes[a],x,X_MAX,-X_VEL,X_VEL,X_START);
+                axs_init(axes[a],x,X_MAX,-X_VEL,X_VEL,X_MAX/2);
                 a++;
                 if(a == no_axs)
                         break;
         case y:
-                axs_init(axes[a],y,Y_MAX,-Y_VEL,Y_VEL,Y_START);
+                axs_init(axes[a],y,Y_MAX,-Y_VEL,Y_VEL,Y_MAX/2);
                 a++;
                 if(a == no_axs)
                         break;
         case z:
-                axs_init(axes[a],z,Z_MAX,-Z_VEL,Z_VEL,Z_START);
+                axs_init(axes[a],z,Z_MAX,-Z_VEL,Z_VEL,Z_MAX/2);
                 a++;
                 if(a == no_axs)
                         break;
         case s:
-                axs_init(axes[a],s,S_MAX,-S_VEL,S_VEL,S_START);
+                axs_init(axes[a],s,S_MAX,-S_VEL,S_VEL,0);
                 break;
         
         default:
@@ -156,11 +156,26 @@ int axes_updt_enbl(struct axis_t* axes[], uint8_t num_axs, const struct cntrlnfo
                         return 1;       //fail
                 }
 
-                if(set_axsnfo->cntrlsw){
+                if(set_axsnfo->cntrlsw > 0) {
                         axs_enbl(axes[i]);
                 } else {
                         axs_dsbl(axes[i]);
                 }
+                if(set_axsnfo->cntrlsw < 0) {
+                        axs_ststrtup(axes[i],set_axsnfo->cntrlvl);
+                }
         }
         return 0;
+}
+
+/* set startup position of axis */
+void axs_ststrtup(struct axis_t* axs, double start_pos)
+{
+        double strtpos;
+        strtpos = start_pos;
+        if (start_pos > axs->max_pos)
+                strtpos = axs->max_pos;
+        if (start_pos < 0)
+                strtpos = 0;
+        axs->cur_pos = strtpos;
 }

@@ -30,8 +30,10 @@ struct drivetest_t {
         uint8_t num_axs;
         enum axsID_t frst_axs;
         struct mk_mainoutput *txshm;
+        struct mk_additionaloutput *atxshm;
         struct mk_maininput *rxshm;
         sem_t* txshm_sem;
+        sem_t* atxshm_sem;
         sem_t* rxshm_sem;
 };
 
@@ -114,6 +116,11 @@ int init(struct drivetest_t*drivesim)
                 printf("open of TX sharedmemory failed\n");
                 return 1;
         };
+        drivesim->atxshm = opnShM_addcntrlnfo(&drivesim->atxshm_sem);
+        if(drivesim->atxshm == NULL) {
+                printf("open of additional TX sharedmemory failed\n");
+                return 1;
+        };
         drivesim->rxshm = opnShM_axsnfo(&drivesim->rxshm_sem);
         if(drivesim->txshm == NULL) {
                 printf("open of RX sharedmemory failed\n");
@@ -138,6 +145,7 @@ int cleanup(struct drivetest_t * drivesim)
         int ok;
         //close shared memory
         ok += clscntrlShM(&(drivesim->txshm),&drivesim->txshm_sem);
+        ok += clsaddcntrlShM(&(drivesim->atxshm),&drivesim->atxshm_sem);
         ok += clsaxsShM(&(drivesim->rxshm),&drivesim->rxshm_sem);
 
         for (int i = 0;i<4;i++){
@@ -182,6 +190,7 @@ int main(int argc, char* argv[])
         uint32_t axswrt_tmoutfrac;
         axswrt_tmoutfrac = drivesim.intrvl_ns/6;
         clock_gettime(CLOCK_TAI,&wkuptm);
+        bool instrtup = true;
 
         while(run){
                 tmspc_cp(&cntrlrd_tmout,&wkuptm);
@@ -192,8 +201,10 @@ int main(int argc, char* argv[])
 		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
 		cyclecnt++;
                 //get TX values from shared memory
-                ok = rd_shm2cntlinfo(drivesim.txshm, &cntrlnfo, drivesim.txshm_sem, &cntrlrd_tmout);
+                ok = rd_shm2cntrlinfo(drivesim.txshm, &cntrlnfo, drivesim.txshm_sem, &cntrlrd_tmout);
                 
+                if(instrtup)
+                        instrtup = axes_startup(drivesim.rxshm,drivesim.atxshm,drivesim.rxshm_sem,drivesim.atxshm_sem,&cntrlnfo,&cntrlrd_tmout);
 
                 
                 //update enable values
