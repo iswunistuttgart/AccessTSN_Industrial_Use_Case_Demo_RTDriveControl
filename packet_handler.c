@@ -165,7 +165,7 @@ int fillaxspkt(struct rt_pkt_t* pkt, struct axsnfo_t* axsnfo, uint16_t seqno)
         //check for current limitation that only one control message is supported
         if(pkt->pyld_hdr->msgcnt != 1)
                 return 1; //fail
-        pkt->pyld_hdr->wrtrId = htons(WRITERID_AXX);
+        pkt->pyld_hdr->wrtrId = htons(WRITERID_AXX);    //TODO fix writer ids for differnet axis
         ok += dbl2nint64(axsnfo->cntrlvl,&tmp);
         pkt->dtstmsg[0].dtstmsg_axs.pos_cur = htobe64(tmp);
         pkt->dtstmsg[0].dtstmsg_axs.fault = (uint8_t) axsnfo->cntrlsw;

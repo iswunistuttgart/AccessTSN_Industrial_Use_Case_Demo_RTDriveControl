@@ -455,6 +455,7 @@ void *rt_thrd(void *tsndrivesim)
         struct cntrlnfo_t rcv_cntrlnfo;
         struct axsnfo_t snd_axsnfo;
         double tmstp;
+        tmstp = (double) drivesim->cnfg_optns.intrvl_ns/1000000000;
 
         //init sending address since it will be static
         for (int i = 0; i < drivesim->cnfg_optns.num_axs;i++) {

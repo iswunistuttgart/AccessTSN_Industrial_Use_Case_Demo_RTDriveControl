@@ -191,7 +191,7 @@ int main(int argc, char* argv[])
         axswrt_tmoutfrac = drivesim.intrvl_ns/6;
         clock_gettime(CLOCK_TAI,&wkuptm);
         bool instrtup = true;
-
+        tmstp = (double) drivesim.intrvl_ns/1000000000;
         while(run){
                 tmspc_cp(&cntrlrd_tmout,&wkuptm);
                 inc_tm(&cntrlrd_tmout,drivesim.intrvl_ns/2);
