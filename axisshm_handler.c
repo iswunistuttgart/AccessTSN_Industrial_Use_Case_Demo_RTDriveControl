@@ -121,8 +121,9 @@ int wrt_axsinfo2shm(struct axsnfo_t* axsnfo, struct mk_maininput* mk_mainin, sem
         int ok;
         if ((NULL == mk_mainin) || (NULL == axsnfo))
                 return 1;       //fail
+        //ok = sem_trywait(mainin_sem);
         ok = sem_timedwait(mainin_sem,tmout);
-        if((ok == -1) && (errno == ENOENT))
+        if((ok == -1) && (errno == ETIMEDOUT))
                 return 2;       //timedout
         if (ok == -1)
                 return 1;       //fail
@@ -139,6 +140,8 @@ int wrt_axsinfo2shm(struct axsnfo_t* axsnfo, struct mk_maininput* mk_mainin, sem
                 mk_mainin->zpos_cur = axsnfo->cntrlvl;
                 mk_mainin->zfault =axsnfo->cntrlsw;
                 break;
+        case s:
+                break;
         default:
                 return 1;       //fail
         }
@@ -152,7 +155,7 @@ int rd_shm2axscntrlinfo(struct mk_maininput* mk_mainin,struct cntrlnfo_t* cntrln
         if ((NULL == cntrlnfo) || (NULL == mk_mainin))
                 return 1;       //fail
         ok = sem_timedwait(mainin_sem,tmout);
-        if((ok == -1) && (errno == ENOENT))
+        if((ok == -1) && (errno == ETIMEDOUT))
                 return 2;       //timedout
         if (ok == -1)
                 return 1;       //fail
@@ -172,7 +175,7 @@ int rd_shm2cntrlinfo(struct mk_mainoutput* mk_mainout, struct cntrlnfo_t* cntrln
         if ((NULL == cntrlnfo) || (NULL == mk_mainout))
                 return 1;       //fail
         ok = sem_timedwait(mainout_sem,tmout);
-        if((ok == -1) && (errno == ENOENT))
+        if((ok == -1) && (errno == ETIMEDOUT))
                 return 2;       //timedout
         if (ok == -1)
                 return 1;       //fail
@@ -202,7 +205,7 @@ int rd_shm2addcntrlinfo(struct mk_additionaloutput* mk_addout, struct cntrlnfo_t
         if ((NULL == cntrlnfo) || (NULL == mk_addout))
                 return 1;       //fail
         ok = sem_timedwait(addout_sem,tmout);
-        if((ok == -1) && (errno == ENOENT))
+        if((ok == -1) && (errno == ETIMEDOUT))
                 return 2;       //timedout
         if (ok == -1)
                 return 1;       //fail
