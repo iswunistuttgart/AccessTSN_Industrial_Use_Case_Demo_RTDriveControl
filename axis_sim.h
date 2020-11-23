@@ -18,7 +18,7 @@
 #include "datastructs.h"
 
 #define K 1     // K-Factor
-#define T 1     // Timefactor
+#define T 0.101     // Timefactor
 #define d 0.5   // Damping
 
 #define X_MAX 300       //in mm
@@ -44,6 +44,7 @@ struct axis_t {
         double cur_pos;
         double cur_vel;
         double set_vel;
+        double last_vel;
         bool enbl;
         bool flt;
 };

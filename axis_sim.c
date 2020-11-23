@@ -58,23 +58,30 @@ void axs_clcpstn(struct axis_t* axs, double tmstp)
 {
         double new_pos;
         double new_vel;
+        double div;
+        double tmstp_sq;
 
         if (axs->enbl != true)
                 return;
-
-        new_vel = 1/(TSQUARE/(tmstp*tmstp)+d_T2/tmstp + 1) * (K * axs->set_vel - axs->cur_vel) + axs->cur_vel;       //Check if klammer passt
+        //calculate PT2 for velocity
+        tmstp_sq = tmstp*tmstp;
+        div = tmstp_sq + d_T2*tmstp + TSQUARE;
+        new_vel = tmstp_sq*K*axs->set_vel + d_T2*tmstp*axs->cur_vel + 2*tmstp_sq*axs->cur_vel - tmstp_sq*axs->last_vel;
+        new_vel = new_vel/div;
         if (new_vel > axs->max_vel)
                 new_vel = axs->max_vel;
         if (new_vel < axs->min_vel)
                 new_vel = axs->min_vel;
 
-        new_pos = axs->cur_pos + axs->cur_vel*tmstp + 0.5 * new_vel * tmstp*tmstp;              //check last term 
+        //update position with new vel; be carful of units (position: mm; vel mm/min; timestep: s)
+        new_pos = axs->cur_pos + axs->cur_vel*60.0*tmstp + 0.5*(new_vel - axs->cur_vel)*60.0*tmstp;              
         if (new_pos > axs->max_pos)
                 new_pos = axs->max_pos;                                                         //check is drive fault should be activated
         if (new_pos < 0)
                 new_pos = 0;
         
         axs->cur_pos = new_pos;
+        axs->last_vel = axs->cur_vel;
         axs->cur_vel = new_vel;
 }
 
