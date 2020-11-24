@@ -217,7 +217,7 @@ int rd_shm2addcntrlinfo(struct mk_additionaloutput* mk_addout, struct cntrlnfo_t
 
         return 0;       //succeded
 }
-
+/*
 bool axes_startup(struct mk_maininput* mk_mainin, struct mk_additionaloutput* mk_addout, sem_t* mainin_sem, sem_t* addout_sem,struct cntrlnfo_t* cntrlnfo,struct timespec* tmout)
 {
         bool ret = false;
@@ -252,7 +252,7 @@ bool axes_startup(struct mk_maininput* mk_mainin, struct mk_additionaloutput* mk
         }
         return ret;
 }
-
+*/
 
 int clscntrlShM(struct mk_mainoutput** mk_mainout, sem_t** sem)
 {

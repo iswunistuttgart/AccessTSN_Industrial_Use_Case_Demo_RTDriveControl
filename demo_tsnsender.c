@@ -339,7 +339,7 @@ void *rt_thrd(void *tsnsender)
         
         struct timespec curtm;
         struct timespec cntrlrd_tmout;
-        bool instrtup = true;
+        //bool instrtup = true;
 
         //init sending address since it will be static
         ok = fillethaddr(&snd_addr, sender->cnfg_optns.dstaddr, ETHERTYPE, sender->txsckt, sender->cnfg_optns.ifname);
@@ -376,9 +376,9 @@ void *rt_thrd(void *tsnsender)
                 }
                 ok += setpkt(snd_pkt,1,CNTRL);
 
-                if (instrtup){
-                        instrtup = axes_startup(sender->rxshm,sender->atxshm,sender->rxshm_sem,sender->atxshm_sem,&snd_cntrlnfo,&cntrlrd_tmout);
-                }
+                //if (instrtup){
+                //        instrtup = axes_startup(sender->rxshm,sender->atxshm,sender->rxshm_sem,sender->atxshm_sem,&snd_cntrlnfo,&cntrlrd_tmout);
+                //}
                 
                 ok += fillcntrlpkt(snd_pkt,&snd_cntrlnfo,snd_seqno);
                 

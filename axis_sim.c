@@ -29,17 +29,17 @@ int axes_initreq(struct axis_t* axes[], uint8_t no_axs, enum axsID_t strt_ID)
         
         switch (strt_ID) {
         case x:
-                axs_init(axes[a],x,X_MAX,-X_VEL,X_VEL,X_MAX/2);
+                axs_init(axes[a],x,X_MAX,-X_VEL,X_VEL,0);
                 a++;
                 if(a == no_axs)
                         break;
         case y:
-                axs_init(axes[a],y,Y_MAX,-Y_VEL,Y_VEL,Y_MAX/2);
+                axs_init(axes[a],y,Y_MAX,-Y_VEL,Y_VEL,0);
                 a++;
                 if(a == no_axs)
                         break;
         case z:
-                axs_init(axes[a],z,Z_MAX,-Z_VEL,Z_VEL,Z_MAX/2);
+                axs_init(axes[a],z,Z_MAX,-Z_VEL,Z_VEL,0);
                 a++;
                 if(a == no_axs)
                         break;
@@ -77,8 +77,8 @@ void axs_clcpstn(struct axis_t* axs, double tmstp)
         new_pos = axs->cur_pos + axs->cur_vel*tmstp + 0.5*(new_vel - axs->cur_vel)*tmstp;              
         if (new_pos > axs->max_pos)
                 new_pos = axs->max_pos;                                                         //check is drive fault should be activated
-        if (new_pos < 0)
-                new_pos = 0;
+        if (new_pos < -axs->max_pos)
+                new_pos = -axs->max_pos;
         
         axs->cur_pos = new_pos;
         axs->last_vel = axs->cur_vel;

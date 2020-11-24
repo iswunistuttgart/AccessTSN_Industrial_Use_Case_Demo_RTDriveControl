@@ -6,7 +6,8 @@
 
 /*
  * This simulates an axis with a simple PT2 filter. It is assumed that the 
- * minimum value of the axis is zero.
+ * minimum value is of the same absolute value than the maximum value.
+ * Also it is assume that the axis always starts at the home position with is zero.
  */
 
 #ifndef _AXIS_SIM_H_

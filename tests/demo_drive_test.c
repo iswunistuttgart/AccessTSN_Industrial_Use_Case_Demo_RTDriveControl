@@ -190,7 +190,7 @@ int main(int argc, char* argv[])
         uint32_t axswrt_tmoutfrac;
         axswrt_tmoutfrac = drivesim.intrvl_ns/6;
         clock_gettime(CLOCK_TAI,&wkuptm);
-        bool instrtup = true;
+        //bool instrtup = true;
         tmstp = (double) drivesim.intrvl_ns/1000000000;
         while(run){
                 tmspc_cp(&cntrlrd_tmout,&wkuptm);
@@ -203,8 +203,8 @@ int main(int argc, char* argv[])
                 //get TX values from shared memory
                 ok = rd_shm2cntrlinfo(drivesim.txshm, &cntrlnfo, drivesim.txshm_sem, &cntrlrd_tmout);
                 
-                if(instrtup)
-                        instrtup = axes_startup(drivesim.rxshm,drivesim.atxshm,drivesim.rxshm_sem,drivesim.atxshm_sem,&cntrlnfo,&cntrlrd_tmout);
+                //if(instrtup)
+                //        instrtup = axes_startup(drivesim.rxshm,drivesim.atxshm,drivesim.rxshm_sem,drivesim.atxshm_sem,&cntrlnfo,&cntrlrd_tmout);
 
                 
                 //update enable values
@@ -223,6 +223,7 @@ int main(int argc, char* argv[])
                         ok =  wrt_axsinfo2shm(&axsnfo, drivesim.rxshm,drivesim.rxshm_sem,&axswrt_tmout);
                         inc_tm(&axswrt_tmout,axswrt_tmoutfrac);
                 }
+                printf("UPdates cur Values: x: %f; y: %f; z: %f \n",drivesim.axes[0]->cur_pos,drivesim.axes[1]->cur_pos,drivesim.axes[2]->cur_pos),
 
                 //update velocity values
                 ok = axes_updt_setvel(drivesim.axes, drivesim.num_axs, &cntrlnfo);
