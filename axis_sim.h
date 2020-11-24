@@ -18,15 +18,15 @@
 #include "datastructs.h"
 
 #define K 1     // K-Factor
-#define T 0.101     // Timefactor
-#define d 0.5   // Damping
+#define T 0.0001     // Timefactor
+#define d 1   // Damping
 
 #define X_MAX 300       //in mm
-#define X_VEL 30        //in mm/min
+#define X_VEL 60    //in mm/s
 #define Y_MAX 300       //in mm
-#define Y_VEL 30       //in mm/min
+#define Y_VEL 60       //in mm/s
 #define Z_MAX 300       //in mm
-#define Z_VEL 30        //in mm/min
+#define Z_VEL 60        //in mm/s
 #define S_MAX 300       
 #define S_VEL 10        
 

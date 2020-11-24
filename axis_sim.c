@@ -73,8 +73,8 @@ void axs_clcpstn(struct axis_t* axs, double tmstp)
         if (new_vel < axs->min_vel)
                 new_vel = axs->min_vel;
 
-        //update position with new vel; be carful of units (position: mm; vel mm/min; timestep: s)
-        new_pos = axs->cur_pos + axs->cur_vel*60.0*tmstp + 0.5*(new_vel - axs->cur_vel)*60.0*tmstp;              
+        //update position with new vel; be carful of units (position: mm; vel mm/s; timestep: s)
+        new_pos = axs->cur_pos + axs->cur_vel*tmstp + 0.5*(new_vel - axs->cur_vel)*tmstp;              
         if (new_pos > axs->max_pos)
                 new_pos = axs->max_pos;                                                         //check is drive fault should be activated
         if (new_pos < 0)
