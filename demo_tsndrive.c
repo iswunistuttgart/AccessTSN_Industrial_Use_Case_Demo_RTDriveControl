@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <poll.h>
+#include <linux/net_tstamp.h>
 #include "packet_handler.h"
 #include "axis_sim.h"
 
