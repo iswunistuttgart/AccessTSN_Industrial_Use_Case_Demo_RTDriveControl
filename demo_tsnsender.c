@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <poll.h>
+#include <net_tstamp.h>
 #include "packet_handler.h"
 #include "axisshm_handler.h"
 
@@ -142,12 +143,14 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
 
 // open tx socket
 int opntxsckt(void)
-{
+{       
+        struct sock_txtime soctxtm;
         int sckt = socket(AF_PACKET,SOCK_DGRAM,ETHERTYPE);
         if (sckt < 0)
                 return sckt;      //fail
-        const int on = 1;
-        //setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&on,sizeof(on));
+        soctxtm.clockid = CLOCK_TAI;
+        soctxtm.flags = (use_deadline_mode | receive_errors);
+        setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
         //maybe need to set SO_BROADCAST also
         return sckt;
 }
@@ -358,7 +361,7 @@ void *rt_thrd(void *tsnsender)
         
 	int cyclecnt =0;
         //while loop
-        while(cyclecnt < 10000){
+        while(cyclecnt < 1000000000 ){
                 
                 clock_gettime(CLOCK_TAI,&curtm);
 		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);

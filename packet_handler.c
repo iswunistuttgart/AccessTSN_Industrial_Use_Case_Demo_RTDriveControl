@@ -222,7 +222,7 @@ int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime
         memset(msg_hdr,0,sizeof(struct msghdr));
         msg_hdr->msg_name = addr;
         msg_hdr->msg_namelen = sizeof(struct sockaddr_ll);
-/*        msg_hdr->msg_control = cntlmsg;
+        msg_hdr->msg_control = cntlmsg;
         msg_hdr->msg_controllen = sizeof(cntlmsg);
 
         cmsg = CMSG_FIRSTHDR(msg_hdr);
@@ -230,7 +230,7 @@ int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime
         cmsg->cmsg_type = SCM_TXTIME;
         cmsg->cmsg_len = CMSG_LEN(sizeof(txtime));
         *((uint64_t *) CMSG_DATA(cmsg)) = txtime;
-*/
+
         /* not in kernel v5.9 or older
         cmsg = CMSG_NXTHDR(msg_hdr, cmsg);
 	cmsg->cmsg_level = SOL_SOCKET;
