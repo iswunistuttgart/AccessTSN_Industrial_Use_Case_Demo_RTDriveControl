@@ -149,7 +149,7 @@ int opntxsckt(void)
         if (sckt < 0)
                 return sckt;      //fail
         soctxtm.clockid = CLOCK_TAI;
-        soctxtm.flags = (use_deadline_mode | receive_errors);
+        soctxtm.flags = 0;
         setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
         //maybe need to set SO_BROADCAST also
         return sckt;
