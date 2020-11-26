@@ -524,7 +524,6 @@ void *rx_thrd(void *tsnsender)
                                 //could also be done through different writer ids
                                 axs_nfo.axsID = i;
                         }
-                        printf("write axisinfo to shm for axis %d, value %f\n",axs_nfo.axsID,axs_nfo.cntrlvl);
                         ok =  wrt_axsinfo2shm(&axs_nfo, sender->rxshm,sender->rxshm_sem,&axswrt_tmout);
                         inc_tm(&axswrt_tmout,axswrt_tmoutfrac);
                         dtstmsgs[i] = NULL;

@@ -335,11 +335,6 @@ int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)
                 return 1;       //fail
         pkt->len = ok;
 
-        printf("Recvd Packet in recv fnkt: ");
-        for (int i = 0 ;i<100;i++)
-                printf("%02x",*((uint8_t *)(msg_iov.iov_base+i)));
-        printf("\n");
-
         return 0;
 }
 
