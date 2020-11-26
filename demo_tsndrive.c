@@ -123,35 +123,35 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
                         cnvrt_dbl2tmspc(atof(optarg), &(drivesim->cnfg_optns.basetm));
                         break;
                 case 't':
-                        (*drivesim).cnfg_optns.intrvl_ns = atoi(optarg)*1000;
+                        drivesim->cnfg_optns.intrvl_ns = atoi(optarg)*1000;
                         break;
                 case 'o':
-                        (*drivesim).cnfg_optns.sndoffst = atoi(optarg);
+                        drivesim->cnfg_optns.sndoffst = atoi(optarg);
                         break;
                 case 'r':
-                        (*drivesim).cnfg_optns.rcvoffst = atoi(optarg);
+                        drivesim->cnfg_optns.rcvoffst = atoi(optarg);
                         break;
                 case 'w':
-                        (*drivesim).cnfg_optns.rcvwndw = atoi(optarg);
+                        drivesim->cnfg_optns.rcvwndw = atoi(optarg);
                         break;
                 case 's':
-                        (*drivesim).cnfg_optns.sndwndw = atoi(optarg);
+                        drivesim->cnfg_optns.sndwndw = atoi(optarg);
                         break;
                 case 'i':
-                        (*drivesim).cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
-                        strcpy((*drivesim).cnfg_optns.ifname,optarg);
+                        drivesim->cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
+                        strcpy((*drivesim->cnfg_optns.ifname,optarg);
                         break;
                 case 'n':
-                        (*drivesim).cnfg_optns.num_axs = atoi(optarg);
+                        drivesim->cnfg_optns.num_axs = atoi(optarg);
                         break;
                 case 'a':
-                        (*drivesim).cnfg_optns.frst_axs = atoi(optarg);
+                        drivesim->cnfg_optns.frst_axs = atoi(optarg);
                         break;
                 case 'p':
-                        (*drivesim).cnfg_optns.pubid = atoi(optarg);
+                        drivesim->cnfg_optns.pubid = atoi(optarg);
                         break;
                 case 'y':
-                        (*drivesim).cnfg_optns.prrty = atoi(optarg);
+                        drivesim->cnfg_optns.prrty = atoi(optarg);
                         break;
                 case 'h':
                 default:
@@ -160,15 +160,15 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
                         break;
                 }
         }
-        if ((*drivesim).cnfg_optns.num_axs > 4) {
+        if (drivesim->cnfg_optns.num_axs > 4) {
                 printf("Number of simulated Axis to high! Maximum 4.\n");
                 exit(0);
         }
-        if ((*drivesim).cnfg_optns.frst_axs > 3) {
+        if (drivesim->cnfg_optns.frst_axs > 3) {
                 printf("Axis index to high! Maximum 4.\n");
                 exit(0);
         }
-        if (((*drivesim).cnfg_optns.frst_axs + (*drivesim).cnfg_optns.num_axs) > 4) {
+        if ((drivesim->cnfg_optns.frst_axs + drivesim->cnfg_optns.num_axs) > 4) {
                 printf("Combination of Axis index and number of simulation Axis to high!\n");
                 exit(0);   
         }

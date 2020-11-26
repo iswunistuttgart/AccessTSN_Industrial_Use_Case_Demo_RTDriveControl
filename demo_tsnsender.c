@@ -121,26 +121,26 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
                         cnvrt_dbl2tmspc(atof(optarg), &(sender->cnfg_optns.basetm));
                         break;
                 case 't':
-                        (*sender).cnfg_optns.intrvl_ns = atoi(optarg)*1000;
+                        sender->cnfg_optns.intrvl_ns = atoi(optarg)*1000;
                         break;
                 case 'o':
-                        (*sender).cnfg_optns.sndoffst = atoi(optarg);
+                        sender->cnfg_optns.sndoffst = atoi(optarg);
                         break;
                 case 'r':
-                        (*sender).cnfg_optns.rcvoffst = atoi(optarg);
+                        sender->cnfg_optns.rcvoffst = atoi(optarg);
                         break;
                 case 'w':
-                        (*sender).cnfg_optns.rcvwndw = atoi(optarg);
+                        sender->cnfg_optns.rcvwndw = atoi(optarg);
                         break;
                 case 'i':
-                        (*sender).cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
-                        strcpy((*sender).cnfg_optns.ifname,optarg);
+                        sender->cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
+                        strcpy(sender->cnfg_optns.ifname,optarg);
                         break;
                 case 'p':
-                        (*sender).cnfg_optns.pubid = atoi(optarg);
+                        sender->cnfg_optns.pubid = atoi(optarg);
                         break;
                 case 'y':
-                        (*sender).cnfg_optns.prrty = atoi(optarg);
+                        sender->cnfg_optns.prrty = atoi(optarg);
                         break;
                 case 'h':
                 default:
