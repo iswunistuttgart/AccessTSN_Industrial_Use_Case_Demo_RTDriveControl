@@ -28,9 +28,10 @@
 #include <fcntl.h>
 #include <time.h>
 #include <poll.h>
-#include <net_tstamp.h>
+#include <linux/net_tstamp.h>
 #include "packet_handler.h"
 #include "axisshm_handler.h"
+
 
 //parameters whcih are fixed at compile time, all values in nano seconds
 #define SENDINGSTACK_DURATION 100000 
@@ -39,7 +40,7 @@
 #define APPRECVWAKEUP 100000
 #define MAXWAKEUPJITTER 40000
 
-
+//static struct sock_txtime soctxtm;
 uint8_t run = 1;
 
 struct cnfg_optns_t{
@@ -144,13 +145,15 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
 // open tx socket
 int opntxsckt(void)
 {       
-        struct sock_txtime soctxtm;
+        int ok;
+	struct sock_txtime soctxtm;
         int sckt = socket(AF_PACKET,SOCK_DGRAM,ETHERTYPE);
         if (sckt < 0)
                 return sckt;      //fail
         soctxtm.clockid = CLOCK_TAI;
         soctxtm.flags = 0;
-        setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
+        ok = setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
+	printf("return of setsock opt : %d, errro: %d \n",ok, errno);
         //maybe need to set SO_BROADCAST also
         return sckt;
 }
@@ -391,7 +394,7 @@ void *rt_thrd(void *tsnsender)
                         return NULL;       //fail
                 }
                 //send TX-Packet
-                ok += sendpkt(sender->txsckt,snd_pkt->sktbf,snd_pkt->len,&snd_msghdr);
+                ok += sendpkt(sender->txsckt,snd_pkt->sktbf,snd_pkt->len,&snd_msghdr,cnvrt_tmspc2int64(&txtime));
                 if (0 == ok)
                         snd_seqno++;    //sending packet succeded
 

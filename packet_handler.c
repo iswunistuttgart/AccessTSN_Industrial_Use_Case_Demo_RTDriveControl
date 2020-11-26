@@ -249,7 +249,7 @@ int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime
 }
 
 
-int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr)
+int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr,uint64_t txtime)
 {
         int sndcnt;
         struct iovec msg_iov;
@@ -260,6 +260,19 @@ int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr)
         msg_hdr->msg_iov->iov_base = buf;
         msg_hdr->msg_iov->iov_len = buflen;
         msg_hdr->msg_iovlen = 1;
+
+	printf("Sendpkt; buflen: %d\n",buflen);
+
+        struct cmsghdr *cmsg;
+        char cntlmsg[CMSG_SPACE(sizeof(txtime)) /*+ CMSG_SPACE(sizeof(clkid)) + CMSG_SPACE(sizeof(uint8_t))*/] = {};
+        msg_hdr->msg_control = cntlmsg;
+        msg_hdr->msg_controllen = sizeof(cntlmsg);
+
+        cmsg = CMSG_FIRSTHDR(msg_hdr);
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type = SCM_TXTIME;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(txtime));
+        *((uint64_t *) CMSG_DATA(cmsg)) = txtime;
 
         sndcnt = sendmsg(fd,msg_hdr,0);
         if (sndcnt < 0) {
