@@ -139,7 +139,7 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
                         break;
                 case 'i':
                         drivesim->cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
-                        strcpy((*drivesim->cnfg_optns.ifname,optarg);
+                        strcpy(drivesim->cnfg_optns.ifname,optarg);
                         break;
                 case 'n':
                         drivesim->cnfg_optns.num_axs = atoi(optarg);
