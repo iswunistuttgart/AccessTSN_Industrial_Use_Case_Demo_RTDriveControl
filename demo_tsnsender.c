@@ -409,7 +409,12 @@ void *rx_thrd(void *tsnsender)
         struct pollfd fds[1] = {};
         fds[0].fd = sender->rxsckt;
         fds[0].events = POLLIN;
-        int tmout = sender->cnfg_optns.rcvwndw/1000000;
+        int tmout;
+        if (sender->cnfg_optns.rcvwndw >= 1000000) {
+                tmout = sender->cnfg_optns.rcvwndw/1000000;
+        } else {
+                tmout = 0;
+        }
 
 	struct rt_pkt_t * rcvd_pkt;
         struct msghdr rcvd_msghdr;
@@ -455,9 +460,9 @@ void *rx_thrd(void *tsnsender)
                 }
 
                 //check for RX-packet
-                ok = poll(fds,1,tmout);         //TODO fix if rcvwidndow smaller thatn milli second etc.
+                ok = poll(fds,1,tmout);
                 if (ok <= 0)
-                        continue;       //TODO make cycle fitting
+                        continue;
                
                 //receive paket
                 ok = getfreepkt(&(sender->pkts),&rcvd_pkt);

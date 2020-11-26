@@ -333,6 +333,13 @@ int rcv_cntrlmsg(struct tsndrive_t* drivesim,struct cntrlnfo_t * cntrlnfo)
         struct rt_pkt_t *rcvd_pkt;
         struct msghdr rcvd_msghdr;
         enum msgtyp_t msg_typ;
+        int poll_tmout;
+        if (drivesim->cnfg_optns.rcvwndw >= 1000000) {
+                poll_tmout = drivesim->cnfg_optns.rcvwndw/1000000;
+        } else {
+                poll_tmout = 0;
+        }
+
 
         struct pollfd fds[1] = {};
         fds[0].fd = drivesim->rxsckt;
@@ -342,9 +349,9 @@ int rcv_cntrlmsg(struct tsndrive_t* drivesim,struct cntrlnfo_t * cntrlnfo)
         int dtstmsgcnt;
 
         //check for RX-packet
-        ok = poll(fds,1,drivesim->cnfg_optns.rcvwndw/1000000);  //timeout in milliseconds -> TODO fix this with fitting value (from calculation)
+        ok = poll(fds,1,poll_tmout);
         if (ok <= 0)
-                return -1;       //TODO make cycle fitting
+                return -1;      //continue
        
         //receive paket
         ok = getfreepkt(&(drivesim->pkts),&rcvd_pkt);
