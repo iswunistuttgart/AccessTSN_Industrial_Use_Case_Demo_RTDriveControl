@@ -322,6 +322,7 @@ int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)        //TO
         if(NULL == rcvmsg_hdr)
                 return 1;       //fail
 
+        memset(rcvmsg_hdr,0,sizeof(struct msghdr));
         rcvmsg_hdr->msg_iov = &msg_iov;
         rcvmsg_hdr->msg_iov->iov_base = pkt->sktbf;
         rcvmsg_hdr->msg_iov->iov_len = MAXPKTSZ;
@@ -329,8 +330,10 @@ int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)        //TO
         
         //TODO do memory management for recv packet
         ok = recvmsg(fd, rcvmsg_hdr, MSG_DONTWAIT);
-        if(ok < 0)
+        if(ok < 0){
+                printf("recv failed errno: %d\n",errno);
                 return 1;       //fail
+        }
         if(MSG_TRUNC == (rcvmsg_hdr->msg_flags & MSG_TRUNC))
                 return 1;       //fail
         pkt->len = ok;
