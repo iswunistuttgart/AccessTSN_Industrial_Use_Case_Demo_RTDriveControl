@@ -121,7 +121,7 @@ int wrt_axsinfo2shm(struct axsnfo_t* axsnfo, struct mk_maininput* mk_mainin, sem
         int ok;
         if ((NULL == mk_mainin) || (NULL == axsnfo))
                 return 1;       //fail
-        //ok = sem_trywait(mainin_sem);
+        
         ok = sem_timedwait(mainin_sem,tmout);
         if((ok == -1) && (errno == ETIMEDOUT))
                 return 2;       //timedout
@@ -154,6 +154,7 @@ int rd_shm2axscntrlinfo(struct mk_maininput* mk_mainin,struct cntrlnfo_t* cntrln
         int ok;
         if ((NULL == cntrlnfo) || (NULL == mk_mainin))
                 return 1;       //fail
+
         ok = sem_timedwait(mainin_sem,tmout);
         if((ok == -1) && (errno == ETIMEDOUT))
                 return 2;       //timedout
@@ -174,6 +175,7 @@ int rd_shm2cntrlinfo(struct mk_mainoutput* mk_mainout, struct cntrlnfo_t* cntrln
         int ok;
         if ((NULL == cntrlnfo) || (NULL == mk_mainout))
                 return 1;       //fail
+
         ok = sem_timedwait(mainout_sem,tmout);
         if((ok == -1) && (errno == ETIMEDOUT))
                 return 2;       //timedout
@@ -204,6 +206,7 @@ int rd_shm2addcntrlinfo(struct mk_additionaloutput* mk_addout, struct cntrlnfo_t
         int ok;
         if ((NULL == cntrlnfo) || (NULL == mk_addout))
                 return 1;       //fail
+
         ok = sem_timedwait(addout_sem,tmout);
         if((ok == -1) && (errno == ETIMEDOUT))
                 return 2;       //timedout
@@ -217,42 +220,6 @@ int rd_shm2addcntrlinfo(struct mk_additionaloutput* mk_addout, struct cntrlnfo_t
 
         return 0;       //succeded
 }
-/*
-bool axes_startup(struct mk_maininput* mk_mainin, struct mk_additionaloutput* mk_addout, sem_t* mainin_sem, sem_t* addout_sem,struct cntrlnfo_t* cntrlnfo,struct timespec* tmout)
-{
-        bool ret = false;
-        int ok;
-        struct axsnfo_t axsnfo;
-        ok = rd_shm2addcntrlinfo(mk_addout, cntrlnfo,addout_sem,tmout);
-        if (ok != 0)
-                return true;
-        ok = rd_shm2axscntrlinfo(mk_mainin, cntrlnfo,mainin_sem,tmout);
-        if (ok != 0)
-                return true;
-        
-        if (cntrlnfo->x_set.poscur != cntrlnfo->x_set.posset) {
-                cntrlnfo->x_set.cntrlsw = -1;
-                cntrlnfo->x_set.cntrlvl = cntrlnfo->x_set.posset;
-                ret = true;
-        }
-        if (cntrlnfo->y_set.poscur != cntrlnfo->y_set.posset) {
-                cntrlnfo->y_set.cntrlsw = -1;
-                cntrlnfo->y_set.cntrlvl = cntrlnfo->y_set.posset;
-                ret = true;
-        }
-        if (cntrlnfo->z_set.poscur != cntrlnfo->z_set.posset) {
-                cntrlnfo->z_set.cntrlsw = -1;
-                cntrlnfo->z_set.cntrlvl = cntrlnfo->z_set.posset;
-                ret = true;
-        }
-        if (cntrlnfo->s_set.poscur != cntrlnfo->s_set.posset) {
-                cntrlnfo->s_set.cntrlsw = -1;
-                cntrlnfo->s_set.cntrlvl = cntrlnfo->s_set.posset;
-                ret = true;
-        }
-        return ret;
-}
-*/
 
 int clscntrlShM(struct mk_mainoutput** mk_mainout, sem_t** sem)
 {

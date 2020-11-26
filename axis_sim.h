@@ -36,7 +36,6 @@
 #define TSQUARE (T*T)
 #define d_T2 (d*T*2)
 
-
 struct axis_t {
         enum axsID_t axs;
         double max_pos;

@@ -5,12 +5,6 @@
  */
 
 /* Demoapplication to send values taken from shared memory to a drive via TSN
- * 
- * Usage:
- * -d [IP-address]      Destination IP-Address (use dot-notation)
- * -t [value]           Specifies update-period in milliseconds. Default 10 seconds
- * -h                   Prints this help message and exits
- * 
  */
 
 #include <limits.h>
@@ -94,7 +88,7 @@ static void usage(char *appname)
         fprintf(stderr,
                 "\n"
                 "Usage: %s [options]\n"
-                " -t [value]           Specifies update-period in microseconds. Default 10 seconds.\n"
+                " -t [value]           Specifies update-period in microseconds. Default 1 millisecond.\n"
                 " -b [value]           Specifies the basetime (the start of the cycle). This is a Unix-Timestamp.\n"
                 " -o [nanosec]         Specifies the sending offset, time between start of cycle and sending slot in nano seconds.\n"
                 " -r [nanosec]         Specifies the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
@@ -109,6 +103,11 @@ static void usage(char *appname)
 void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
 {
         int c;
+        //set standard values
+        cnvrt_dbl2tmspc(0, &(sender->cnfg_optns.basetm));
+        sender->cnfg_optns.intrvl_ns = 1000000;
+
+
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
         while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:i:"))) {
@@ -151,7 +150,7 @@ int opntxsckt(void)
         soctxtm.clockid = CLOCK_TAI;
         soctxtm.flags = 0;
         setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
-        //maybe need to set SO_BROADCAST also
+        
         return sckt;
 }
 
@@ -284,7 +283,7 @@ int init(struct tsnsender_t *sender)
                 return 1;
         }
 
-        //setup pmc-thread (optional)
+        //OPTIONAL: setup pmc-thread (optional)
 
         return ok;
 }
@@ -295,7 +294,7 @@ int cleanup(struct tsnsender_t *sender)
         int ok = 0;
         //stop threads
         ok = pthread_cancel(sender->rt_thrd);
-        //maybe need to wait until thread has ended?
+        ok =+ pthread_cancel(sender->rx_thrd);
 
         //close rx socket
         ok += close(sender->rxsckt);
@@ -321,10 +320,6 @@ int cleanup(struct tsnsender_t *sender)
         return ok;
 }
 
-
-
-
-
 //Real time thread sender
 void *rt_thrd(void *tsnsender)
 {
@@ -339,9 +334,7 @@ void *rt_thrd(void *tsnsender)
         memset(&snd_cntrlnfo,0, sizeof(struct cntrlnfo_t));
         uint16_t snd_seqno = 0;
         
-        struct timespec curtm;
         struct timespec cntrlrd_tmout;
-        //bool instrtup = true;
 
         //init sending address since it will be static
         ok = fillethaddr(&snd_addr, sender->cnfg_optns.dstaddr, ETHERTYPE, sender->txsckt, sender->cnfg_optns.ifname);
@@ -358,17 +351,11 @@ void *rt_thrd(void *tsnsender)
         //sleep till first wakeup time
         clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkupsndtm, NULL);
         
-	int cyclecnt =0;
+	
         //while loop
-        while(cyclecnt < 1000000000 ){
-                
-                clock_gettime(CLOCK_TAI,&curtm);
-		printf("Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
-		cyclecnt++;
-
+        while(true){
                 //get TX values from shared memory
                 ok = rd_shm2cntrlinfo(sender->txshm, &snd_cntrlnfo, sender->txshm_sem, &cntrlrd_tmout);
-                printf("tx shmemory accessed\n");
 
                 //get and fill TX-Packet
                 ok = getfreepkt(&(sender->pkts),&snd_pkt);       //maybe change to one static packet in thread to avoid competing access to paket store from rx and tx threads
@@ -377,10 +364,6 @@ void *rt_thrd(void *tsnsender)
                         return NULL;       //fail
                 }
                 ok += setpkt(snd_pkt,1,CNTRL);
-
-                //if (instrtup){
-                //        instrtup = axes_startup(sender->rxshm,sender->atxshm,sender->rxshm_sem,sender->atxshm_sem,&snd_cntrlnfo,&cntrlrd_tmout);
-                //}
                 
                 ok += fillcntrlpkt(snd_pkt,&snd_cntrlnfo,snd_seqno);
                 if (ok != 0){
@@ -405,7 +388,6 @@ void *rt_thrd(void *tsnsender)
                 //sleep until the next cycle
                 clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkupsndtm, NULL);
         }
-
         return NULL;
 }
 
@@ -442,9 +424,8 @@ void *rx_thrd(void *tsnsender)
         tmspc_cp(&axswrt_tmout,&wkuprcvtm);
         inc_tm(&axswrt_tmout,axswrt_tmoutfrac);
                 
-	int cyclecnt = 0;
         //while loop
-        while(cyclecnt < 10000){
+        while(true){
                 
                 //for more than one axis, multiple packets should arrive within a period
                 if((rcv_cnt%(sender->cnfg_optns.num_rcvmacs+1)) == 0){
@@ -472,10 +453,6 @@ void *rx_thrd(void *tsnsender)
                 ok = poll(fds,1,tmout);         //TODO fix if rcvwidndow smaller thatn milli second etc.
                 if (ok <= 0)
                         continue;       //TODO make cycle fitting
-
-                clock_gettime(CLOCK_TAI,&curtm);
-		printf("RX Current Time: %11d.%.1ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
-		cyclecnt++;
                
                 //receive paket
                 ok = getfreepkt(&(sender->pkts),&rcvd_pkt);
@@ -517,6 +494,7 @@ void *rx_thrd(void *tsnsender)
                         ok = prsaxsmsg(dtstmsgs[i],&axs_nfo);
                         if (dtstmsgcnt > 1)  {
                                 //only one datasetmsg in packet, axs differentation through rcvmac
+                                //could also be done through different writer ids
                                 axs_nfo.axsID = i;
                         }
                         printf("write axisinfo to shm for axis %d, value %f\n",axs_nfo.axsID,axs_nfo.cntrlvl);
@@ -539,9 +517,8 @@ int main(int argc, char* argv[])
         int ok;
         unsigned char mac[ETH_ALEN];
 
-        //set standard values
+        //set standard values for addresses
         sender.cnfg_optns.dstaddr = calloc(ETH_ALEN,sizeof(char));
-
         sscanf(DSTADDRCNTRL,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
         memcpy(sender.cnfg_optns.dstaddr,mac,ETH_ALEN);
 
@@ -559,11 +536,7 @@ int main(int argc, char* argv[])
         sscanf(DSTADDRAXSS,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
         memcpy(sender.cnfg_optns.rcv_macs[3],mac,ETH_ALEN);
         sender.cnfg_optns.num_rcvmacs = 4;
-
-
-        
-        printf("dstaddr: 0x%02x:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x\n",sender.cnfg_optns.dstaddr[0],sender.cnfg_optns.dstaddr[1],sender.cnfg_optns.dstaddr[2],sender.cnfg_optns.dstaddr[3],sender.cnfg_optns.dstaddr[4],sender.cnfg_optns.dstaddr[5]);
-        
+      
         //parse CLI arguments
         evalCLI(argc,argv,&sender);
 
@@ -583,7 +556,6 @@ int main(int argc, char* argv[])
         //start rt-thread   
         /* Create a pthread with specified attributes */
         ok = pthread_create(&(sender.rt_thrd), &(sender.rtthrd_attr), (void*) rt_thrd, (void*)&sender);
-        // rt_thrd((void*)&sender);
         ok += pthread_create(&(sender.rx_thrd),&(sender.rxthrd_attr),(void*) rx_thrd, (void*) &sender);
         if (ok) {
                 printf("create pthread failed\n");
@@ -599,11 +571,10 @@ int main(int argc, char* argv[])
                 printf("join pthread failed: %m\n");
         
 
-        //start pmc-thread
+        //OPTIONAL: start pmc-thread
 
-        //wait until run is changed? Check how such programms are generally stopped
         while(run){
-                sleep(10);
+                sleep(1);
         }
 
         // cleanup

@@ -4,13 +4,7 @@
  * Author: Philipp Neher <philipp.neher@isw.uni-stuttgart.de>
  */
 
-/* Demoapplication to receive values via TSN and simulate a drive
- * 
- * Usage:
- * -d [IP-address]      Destination IP-Address (use dot-notation)
- * -t [value]           Specifies update-period in milliseconds. Default 10 seconds
- * -h                   Prints this help message and exits
- * 
+/* Demoapplication to receive values via TSN and simulate a drive 
  */
 
 #include <limits.h>
@@ -32,7 +26,7 @@
 #include "packet_handler.h"
 #include "axis_sim.h"
 
-//parameters whcih are fixed at compile time, all values in nano seconds
+//parameters which are fixed at compile time, all values in nano seconds
 #define SENDINGSTACK_DURATION 100000 
 #define RECEIVINGSTACK_DURATION 100000
 #define APPSENDWAKEUP 100000
@@ -89,7 +83,7 @@ static void usage(char *appname)
         fprintf(stderr,
                 "\n"
                 "Usage: %s [options]\n"
-                " -t [value]           Specifies update-period in microseconds. Default 10 seconds.\n"
+                " -t [value]           Specifies update-period in microseconds. Default 1 millisecond.\n"
                 " -b [value]           Specifies the basetime (the start of the cycle). This is a Unix-Timestamp.\n"
                 " -o [nanosec]         Specifies the sending offset, time between start of cycle and sending slot in nano seconds.\n"
                 " -r [nanosec]         Specifies the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
@@ -107,6 +101,13 @@ static void usage(char *appname)
 void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
 {
         int c;
+
+        //set standard values
+        drivesim->cnfg_optns.frst_axs = 0;
+        drivesim->cnfg_optns.num_axs = 4;
+        cnvrt_dbl2tmspc(0, &(drivesim->cnfg_optns.basetm));
+        drivesim->cnfg_optns.intrvl_ns = 1000000;
+
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
         while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:s:i:n:a:"))) {
@@ -170,7 +171,6 @@ int opntxsckt(void)
         soctxtm.clockid = CLOCK_TAI;
         soctxtm.flags = 0;
         setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
-        //maybe need to set SO_BROADCAST also
         return sckt;
 }
 
@@ -180,9 +180,8 @@ int init(struct tsndrive_t *drivesim)
         int ok = 0;
         struct sched_param param;
         unsigned char mac[ETH_ALEN];
-        
-        //set addresses
-        //set standard values
+
+        //set standard addresses
         memset(&mac,0,sizeof(char)*ETH_ALEN);
         drivesim->cnfg_optns.rcvaddr[0] = calloc(ETH_ALEN+1,sizeof(char));
         sscanf(DSTADDRCNTRL,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
@@ -194,13 +193,11 @@ int init(struct tsndrive_t *drivesim)
         drivesim->cnfg_optns.snd_macs[3] = calloc(ETH_ALEN+1,sizeof(char));
         memset(&mac,0,sizeof(char)*ETH_ALEN+1);
         sscanf(DSTADDRAXSX,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        memcpy(drivesim->cnfg_optns.snd_macs[0],mac,ETH_ALEN);
-                
+        memcpy(drivesim->cnfg_optns.snd_macs[0],mac,ETH_ALEN); 
        
         memset(&mac,0,sizeof(char)*ETH_ALEN+1);
         sscanf(DSTADDRAXSY,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
         memcpy(drivesim->cnfg_optns.snd_macs[1],mac,ETH_ALEN);
-
         
         memset(&mac,0,sizeof(char)*ETH_ALEN+1);
         sscanf(DSTADDRAXSZ,"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
@@ -287,7 +284,7 @@ int init(struct tsndrive_t *drivesim)
                 return 1;
         }
 
-        //setup pmc-thread (optional)
+        //OPTIONAL: setup pmc-thread (optional)
 
         return ok;
 }
@@ -342,7 +339,7 @@ int rcv_cntrlmsg(struct tsndrive_t* drivesim,struct cntrlnfo_t * cntrlnfo)
         ok = poll(fds,1,drivesim->cnfg_optns.rcvwndw/1000000);  //timeout in milliseconds -> TODO fix this with fitting value (from calculation)
         if (ok <= 0)
                 return -1;       //TODO make cycle fitting
-        printf("Packet received\n");
+       
         //receive paket
         ok = getfreepkt(&(drivesim->pkts),&rcvd_pkt);
         if (ok == 1) {
@@ -377,7 +374,7 @@ int rcv_cntrlmsg(struct tsndrive_t* drivesim,struct cntrlnfo_t * cntrlnfo)
                 return -1;       //continue
         }
 
-        //TODO: might want to check sequence number
+        //OPTIONAL: might want to check sequence number
         ok = prsdtstmsg(rcvd_pkt, msg_typ, dtstmsgs, &dtstmsgcnt);
 
         // expected to have only one datasetmessage
@@ -416,7 +413,7 @@ int snd_axsmsg(struct tsndrive_t* drivesim, struct sockaddr_ll *snd_addr, struct
         }
 
         //get and fill TX-Packet
-        ok = getfreepkt(&(drivesim->pkts),&snd_pkt);       //maybe change to one static packet in thread to avoid competing access to paket store from rx and tx threads
+        ok = getfreepkt(&(drivesim->pkts),&snd_pkt);
         if (ok == 1){
                 printf("Could not get free packet for sending. \n");
                 return 1;       //fail
@@ -451,7 +448,6 @@ void *rt_thrd(void *tsndrivesim)
         struct sockaddr_ll snd_addrs[4];
         uint16_t snd_seqno[4] = {0,0,0,0};
         
-        struct timespec curtm;
         struct timespec frst_txtime;    //txtime of x-axis, reagrdless if simulated
 
         struct cntrlnfo_t rcv_cntrlnfo;
@@ -463,11 +459,7 @@ void *rt_thrd(void *tsndrivesim)
         for (int i = 0; i < drivesim->cnfg_optns.num_axs;i++) {
                 ok = fillethaddr(&(snd_addrs[i]), drivesim->cnfg_optns.snd_macs[drivesim->cnfg_optns.frst_axs + i], ETHERTYPE, drivesim->txsckt, drivesim->cnfg_optns.ifname);
         }
-        /*for (int i = 0;i <4;i++) {
-                printf("index: %d, cnfgmac: %02x:%02x:%02x:%02x:%02x:%02x; ", i, drivesim->cnfg_optns.snd_macs[i][0],drivesim->cnfg_optns.snd_macs[i][1],drivesim->cnfg_optns.snd_macs[i][2],drivesim->cnfg_optns.snd_macs[i][3],drivesim->cnfg_optns.snd_macs[i][4],drivesim->cnfg_optns.snd_macs[i][5]);
-                printf("snd_addrs mac: %02x:%02x:%02x:%02x:%02x:%02x \n", snd_addrs[i].sll_addr[0],snd_addrs[i].sll_addr[1],snd_addrs[i].sll_addr[2],snd_addrs[i].sll_addr[3],snd_addrs[i].sll_addr[4],snd_addrs[i].sll_addr[5]);
-        }*/
-
+        
         /*sleep this (basetime minus one period) is reached
         or (basetime plus multiple periods) */
         clock_gettime(CLOCK_TAI,&wkuprcvtm);
@@ -489,15 +481,11 @@ void *rt_thrd(void *tsndrivesim)
         clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, &wkuprcvtm, NULL);
         
         ok = 0;
-	int cyclecnt =0;
         //while loop
-        while(cyclecnt < 1000000000000){
-                clock_gettime(CLOCK_TAI,&curtm);
-		printf("Current Time: %lld.%.09ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
-		cyclecnt++;
-                
+        while(true){
+                                
                 //receive control message
-                rcv_ok = rcv_cntrlmsg(drivesim,&rcv_cntrlnfo);      //TODO: what if more then one packet has arrived within timeframe
+                rcv_ok = rcv_cntrlmsg(drivesim,&rcv_cntrlnfo);      //limitation: only one controlmsg per timeframe is processed
                 if (rcv_ok > 0){
                         printf("fatal error during receive\n");
                         return NULL; //fail
@@ -545,7 +533,6 @@ int main(int argc, char* argv[])
         struct tsndrive_t drivesim;
         int ok;
 
-      
         //parse CLI arguments
         evalCLI(argc,argv,&drivesim);
 
@@ -564,8 +551,8 @@ int main(int argc, char* argv[])
 
         //start rt-thread   
         /* Create a pthread with specified attributes */
-  //      ok = pthread_create(&(drivesim.rt_thrd), &(drivesim.rtthrd_attr), (void*) rt_thrd, (void*)&drivesim);
-        rt_thrd((void*)&drivesim);
+        ok = pthread_create(&(drivesim.rt_thrd), &(drivesim.rtthrd_attr), (void*) rt_thrd, (void*)&drivesim);
+        
         if (ok) {
                 printf("create pthread failed\n");
                 //cleanup
@@ -575,16 +562,15 @@ int main(int argc, char* argv[])
  
         /* Join the thread and wait until it is done */
 	int ret;
-//        ret = pthread_join((sender.rt_thrd), NULL);
+        ret = pthread_join((drivesim.rt_thrd), NULL);
         if (ret)
                 printf("join pthread failed: m\n");
         
 
-        //start pmc-thread
+        //OPTIONAL: start pmc-thread
 
-        //wait until run is changed? Check how such programms are generally stopped
         while(run){
-                sleep(10);
+                sleep(1);
         }
 
         // cleanup

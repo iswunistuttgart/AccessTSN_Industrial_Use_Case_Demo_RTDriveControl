@@ -11,9 +11,6 @@
 
 void initpkthdrs(struct rt_pkt_t* pkt)
 {
-        // eth_hdr
-        // pkt->eth_hdr->ethtyp = htons(ETHERTYPE);
-        // ntwrkmsg_hdr_t 
         pkt->ntwrkmsg_hdr->ver_fl = 0xF1;       //Version = 1; PublishID, GroupHeader, PayloadHdr and ExtendedFlags 1 enables
         pkt->ntwrkmsg_hdr->extfl = 0x21;        //pubishID datatype Uint16; Timestamp enabled
         //TODO pkt.ntwrkmsg_hdr->pubId;
@@ -76,9 +73,7 @@ int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
         while (i <msgfldcnt) {
                 *(&(pkt->szrry->size) + i) = htons(dtstmsgsz);
                 i++;
-        }
-        
-        
+        }    
         initpkthdrs(pkt);
         
         return 0;       //succeded
@@ -94,7 +89,6 @@ int createpkt(struct rt_pkt_t** pkt)
                 pkt = NULL;
                 return 1;       //fail
         }
-        //memset(newpkt,0,sizeof(struct rt_pkt_t));
 
         newpkt->sktbf = (char *) malloc(MAXPKTSZ*sizeof(char));
         if (NULL == newpkt->sktbf) {
@@ -162,10 +156,25 @@ int fillaxspkt(struct rt_pkt_t* pkt, struct axsnfo_t* axsnfo, uint16_t seqno)
         struct timespec time;
         int ok = 0;
         pkt->grp_hdr->seqNo = htons(seqno);
-        //check for current limitation that only one control message is supported
+        
         if(pkt->pyld_hdr->msgcnt != 1)
                 return 1; //fail
-        pkt->pyld_hdr->wrtrId = htons(WRITERID_AXX);    //TODO fix writer ids for differnet axis
+        switch(axsnfo->axsID){
+        case x:
+                pkt->pyld_hdr->wrtrId = htons(WRITERID_AXX);
+                break;
+        case y: 
+                pkt->pyld_hdr->wrtrId = htons(WRITERID_AXY);
+                break;
+        case z:
+                pkt->pyld_hdr->wrtrId = htons(WRITERID_AXZ);
+                break;
+        case s: 
+                pkt->pyld_hdr->wrtrId = htons(WRITERID_AXS);
+                break;
+        default:
+                pkt->pyld_hdr->wrtrId = htons(0);
+        }
         ok += dbl2nint64(axsnfo->cntrlvl,&tmp);
         pkt->dtstmsg[0].dtstmsg_axs.pos_cur = htobe64(tmp);
         pkt->dtstmsg[0].dtstmsg_axs.fault = (uint8_t) axsnfo->cntrlsw;
@@ -289,7 +298,6 @@ int opnrxsckt(char *ifnm, char *mac_addrs[], int no_macs)
         // set interface to get multicast macs
         pkt_mr.mr_ifindex = ifopts.ifr_ifindex;
         pkt_mr.mr_type = PACKET_MR_MULTICAST;
-        //pkt_mr.mr_type = PACKET_MR_PROMISC;
         pkt_mr.mr_alen = ETH_ALEN;
         char * test;
         for (int i = 0; i < no_macs; i++) {
@@ -300,20 +308,10 @@ int opnrxsckt(char *ifnm, char *mac_addrs[], int no_macs)
                 }
         }
         
-        //bind to device        //TODO necessary?
-        //setsockopt(rxsckt, SOL_SOCKET, SO_BINDTODEVICE,ifnm,IFNAMSIZ);
-        /*scktaddr.sll_family = AF_PACKET;
-        scktaddr.sll_ifindex = ifopts.ifr_ifindex;
-        scktaddr.sll_protocol = ETHERTYPE;
-        if (bind(rxsckt,(struct sockaddr *) &scktaddr,sizeof(scktaddr)) < 0) {
-                close(rxsckt);
-                return -1;      //fail
-        }
-        */
-       return rxsckt;
+        return rxsckt;
 }
 
-int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)        //TODO check how memory management is done here
+int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)
 {
         int ok = 0;
         struct iovec msg_iov;
@@ -328,7 +326,6 @@ int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)        //TO
         rcvmsg_hdr->msg_iov->iov_len = MAXPKTSZ;
         rcvmsg_hdr->msg_iovlen = 1;
         
-        //TODO do memory management for recv packet
         ok = recvmsg(fd, rcvmsg_hdr, MSG_DONTWAIT);
         if(ok < 0){
                 printf("recv failed errno: %d\n",errno);
@@ -345,6 +342,7 @@ int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr)        //TO
 
         return 0;
 }
+
 int chckethhdr(struct rt_pkt_t* pkt, char *mac_addrs[], int no_macs)
 {
         struct eth_hdr_t * rcvd_ethhdr;
@@ -368,7 +366,7 @@ int chckmsghdr(struct msghdr *msg_hdr, char *mac_addr, uint16_t ethtyp)
         if(rcvaddr->sll_protocol != htons(ethtyp))
                 return 1;       //fail
         for(int i=0;i<ETH_ALEN;i++) {
-                if(rcvaddr->sll_addr[i] != mac_addr[i]) //TODO check if correct behavior
+                if(rcvaddr->sll_addr[i] != mac_addr[i])
                         return 1;       //fail
         }
         return 0;
@@ -403,7 +401,7 @@ int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
                 dtstmsgsz = ntohs(pkt->szrry->size);
         }
         pkt->dtstmsg = (union dtstmsg_t*) ((char *) pkt->extntwrkmsg_hdr + sizeof(struct extntwrkmsg_hdr_t) + msgfldsz);
-        // limitation only one type of dataset-message in a single packet supported
+        // limitation: only one type of dataset-message in a single packet supported
         switch(dtstmsgsz){
         case sizeof(struct dtstmsg_cntrl_t):
                 *pkttyp = CNTRL;
@@ -488,7 +486,6 @@ int prscntrlmsg(union dtstmsg_t *dtstmsg, struct cntrlnfo_t * cntrlnfo)
 
         return 0;
 }
-
 
 
 /* ##### PacketStore ##### */

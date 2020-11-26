@@ -76,7 +76,7 @@ void axs_clcpstn(struct axis_t* axs, double tmstp)
         //update position with new vel; be carful of units (position: mm; vel mm/s; timestep: s)
         new_pos = axs->cur_pos + axs->cur_vel*tmstp + 0.5*(new_vel - axs->cur_vel)*tmstp;              
         if (new_pos > axs->max_pos)
-                new_pos = axs->max_pos;                                                         //check is drive fault should be activated
+                new_pos = axs->max_pos;         //OPTIONAL: drive fault could be activated if limit is reached
         if (new_pos < -axs->max_pos)
                 new_pos = -axs->max_pos;
         
@@ -99,7 +99,6 @@ void axs_enbl(struct axis_t* axs)
         axs_clrflt(axs);
         axs->enbl = true;
 }
-
 
 void axs_dsbl(struct axis_t* axs)
 {

@@ -28,8 +28,6 @@
 #include "datastructs.h"
 #include "time_calc.h"
 
-//#define SO_TXTIME 63
-//#define SCM_TXTIME SO_TXTIME
 /* Defines for configurable header values */
 
 #define WGRPID 0x1000
@@ -63,27 +61,7 @@ struct eth_hdr_t {
         char srcmac[6];
         uint16_t ethtyp;
 };
-/*
-struct ip_hdr_t {
-        uint8_t vl;
-        uint8_t dsf;
-        uint16_t len;
-        uint16_t id;
-        uint16_t flag_fragoff;
-        uint8_t ttl;
-        uint8_t proto;
-        uint16_t hdr_chksm;
-        uint32_t srcaddr;
-        uint32_t dstaddr;
-};
 
-struct udp_hdr_t {
-        uint16_t srcp;
-        uint16_t dstp;
-        uint16_t len;
-        uint16_t chksm;
-};
-*/
 struct ntwrkmsg_hdr_t {
         uint8_t ver_fl;
         uint8_t extfl;
@@ -94,7 +72,6 @@ struct grp_hdr_t {
         uint8_t grpfl;
         uint16_t wgrpId;
         uint32_t grpVer;
-        //uint16_t ntwrkMsgNo;          //removed in demo
         uint16_t seqNo;
 };
 
@@ -118,9 +95,9 @@ struct dtstmsg_cntrl_t{
 	int64_t yvel_set;		//double encoded as Int64
 	int64_t zvel_set;		//double encoded as Int64
 	int64_t spindlespeed;		//double encoded as Int64
-	int8_t xenable;                //int8			
-	int8_t yenable;		//int8		
-	int8_t zenable;		//int8		
+	int8_t xenable;                 //int8			
+	int8_t yenable;		        //int8		
+	int8_t zenable;		        //int8		
 	int8_t spindleenable;		//int8	
 	uint8_t spindlebrake;		//bool encoded as uint8	
 	uint8_t machinestatus;		//bool encoded as uint8	
@@ -161,49 +138,6 @@ enum msgtyp_t {
         CNTRL,
         AXS,
 };
-
-/* Enum for variable Type, see variable list in "mk_shminterface.h" */
-/*
-enum varID_t {
-        xvel_set = 0,
-	yvel_set = 1,
-        zvel_set = 2,
-        spindlespeed = 3,
-        xenable = 4,
-        yenable = 5,
-        zenable = 6,
-        spindleenable = 7,
-        spindlebrake = 8,
-        machinestatus = 9,
-        estopstatus = 10,
-        feedrate = 11,
-        feedoverride = 12,
-        xpos_set = 13,
-        ypos_set = 14,
-        zpos_set = 15,
-        lineno = 16,
-        uptime = 17,
-        tool = 18,
-        mode = 19,
-        xhome = 20,
-        yhome = 21,
-        zhome = 22,
-        xhardneg = 23,
-        xhardpos = 24,
-        yhardneg = 25,
-        yhardpos = 26,
-        zhardneg = 27,
-        zhardpos = 28,
-        xpos_cur = 29,
-        ypos_cur = 30,
-        zpos_cur = 31,
-        xfault = 32,
-        yfault = 33,
-        zfault = 34,
-};
-*/
-
-
 
 /* allocates a new packet and buffer  */
 int createpkt(struct rt_pkt_t** pkt);
@@ -249,7 +183,7 @@ int sendpkt(int fd, void *buf, int buflen, struct sockaddr_ll *addr,uint64_t txt
 int opnrxsckt(char *ifnm, char *mac_addrs[], int no_macs);
 
 /* receives a packet, from socket */
-int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr);         //TODO check how memory managemeant is done here
+int rcvpkt(int fd, struct rt_pkt_t* pkt, struct msghdr * rcvmsg_hdr);
 
 /* checks the eth_hdr for one of the requested multicast-adresses
  * and the correct ethertype directly using the pkt_skb_buffer
