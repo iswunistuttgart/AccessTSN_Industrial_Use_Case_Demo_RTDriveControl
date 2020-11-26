@@ -239,11 +239,8 @@ double nint642dbl(int64_t val);
 /* fills the LinkLayer(Ethernet)-Address structure */
 int fillethaddr(struct sockaddr_ll *addr, uint8_t *mac_addr, uint16_t ethtyp, int fd, char *ifnm);
 
-/* fills the msghdr structure with the necessary values to send the packet */
-int fillmsghdr(struct msghdr *msg_hdr, struct sockaddr_ll *addr, uint64_t txtime, clockid_t clkid);
-
 /* sends the packet with the specified txtime and other values */
-int sendpkt(int fd, void *buf, int buflen, struct msghdr *msg_hdr, uint64_t txtime);
+int sendpkt(int fd, void *buf, int buflen, struct sockaddr_ll *addr,uint64_t txtime, clockid_t clkid);
 
 /* open receive socket as a RAW-packet socket with with AF_PACKET. 
  * Activate reception of Ethernet-Multicast-packets for specifies addresses

@@ -162,11 +162,13 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
 // open tx socket
 int opntxsckt(void)
 {
+        struct sock_txtime soctxtm;
         int sckt = socket(AF_PACKET,SOCK_DGRAM,ETHERTYPE);
         if (sckt < 0)
                 return sckt;      //fail
-        const int on = 1;
-        //setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&on,sizeof(on));
+        soctxtm.clockid = CLOCK_TAI;
+        soctxtm.flags = 0;
+        setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
         //maybe need to set SO_BROADCAST also
         return sckt;
 }
@@ -420,13 +422,12 @@ int snd_axsmsg(struct tsndrive_t* drivesim, struct sockaddr_ll *snd_addr, struct
         }
         ok += setpkt(snd_pkt,1,AXS);
         ok += fillaxspkt(snd_pkt,axsnfo,*seqno);
-        ok += fillmsghdr(&snd_msghdr,snd_addr,cnvrt_tmspc2int64(&axs_txtime),CLOCK_TAI);
         if (ok != 0){
                 printf("Error in filling sending packet or corresponding headers.\n");
                 return 1;       //fail
         }
         //send TX-Packet
-        ok += sendpkt(drivesim->txsckt,snd_pkt->sktbf,snd_pkt->len,&snd_msghdr);
+        ok += sendpkt(drivesim->txsckt,snd_pkt->sktbf,snd_pkt->len,snd_addr,cnvrt_tmspc2int64(&axs_txtime),CLOCK_TAI);
         if (0 == ok)
                 *seqno++;    //sending packet succeded
 
@@ -489,7 +490,7 @@ void *rt_thrd(void *tsndrivesim)
         ok = 0;
 	int cyclecnt =0;
         //while loop
-        while(cyclecnt < 10000){
+        while(cyclecnt < 1000000000000){
                 clock_gettime(CLOCK_TAI,&curtm);
 		printf("Current Time: %lld.%.09ld Cycle: %08d\n",(long long) curtm.tv_sec,curtm.tv_nsec,cyclecnt);
 		cyclecnt++;

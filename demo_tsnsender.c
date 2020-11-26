@@ -40,7 +40,6 @@
 #define APPRECVWAKEUP 100000
 #define MAXWAKEUPJITTER 40000
 
-//static struct sock_txtime soctxtm;
 uint8_t run = 1;
 
 struct cnfg_optns_t{
@@ -145,15 +144,13 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
 // open tx socket
 int opntxsckt(void)
 {       
-        int ok;
-	struct sock_txtime soctxtm;
+        struct sock_txtime soctxtm;
         int sckt = socket(AF_PACKET,SOCK_DGRAM,ETHERTYPE);
         if (sckt < 0)
                 return sckt;      //fail
         soctxtm.clockid = CLOCK_TAI;
         soctxtm.flags = 0;
-        ok = setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
-	printf("return of setsock opt : %d, errro: %d \n",ok, errno);
+        setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
         //maybe need to set SO_BROADCAST also
         return sckt;
 }
@@ -338,7 +335,6 @@ void *rt_thrd(void *tsnsender)
         struct timespec txtime;
         struct rt_pkt_t *snd_pkt;
         struct sockaddr_ll snd_addr;
-        struct msghdr snd_msghdr;
         struct cntrlnfo_t snd_cntrlnfo;
         memset(&snd_cntrlnfo,0, sizeof(struct cntrlnfo_t));
         uint16_t snd_seqno = 0;
@@ -387,14 +383,12 @@ void *rt_thrd(void *tsnsender)
                 //}
                 
                 ok += fillcntrlpkt(snd_pkt,&snd_cntrlnfo,snd_seqno);
-                
-                ok += fillmsghdr(&snd_msghdr,&snd_addr,cnvrt_tmspc2int64(&txtime),CLOCK_TAI);
                 if (ok != 0){
                         printf("Error in filling sending packet or corresponding headers.\n");
                         return NULL;       //fail
                 }
                 //send TX-Packet
-                ok += sendpkt(sender->txsckt,snd_pkt->sktbf,snd_pkt->len,&snd_msghdr,cnvrt_tmspc2int64(&txtime));
+                ok += sendpkt(sender->txsckt,snd_pkt->sktbf,snd_pkt->len,&snd_addr,cnvrt_tmspc2int64(&txtime),CLOCK_TAI);
                 if (0 == ok)
                         snd_seqno++;    //sending packet succeded
 
