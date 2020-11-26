@@ -47,6 +47,7 @@ struct cnfg_optns_t{
         char *rcv_macs[4];
         uint8_t num_rcvmacs;
         uint16_t pubid;
+        int prrty;
 };
 
 struct tsnsender_t {
@@ -96,6 +97,7 @@ static void usage(char *appname)
                 " -w [nanosec]         Specifies the receive window duration, timeinterval in which a packet is expected in nano seconds.\n"
                 " -i                   Name of the Networkinterface to use.\n"
                 " -p                   PublisherID e.g. TalkerID, Default: 0xAC00\n"
+                " -y                   Priority of sending socket (can be 1-7), Default: 6\n"
                 " -h                   Prints this help message and exits\n"
                 "\n",
                 appname);
@@ -109,10 +111,11 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         cnvrt_dbl2tmspc(0, &(sender->cnfg_optns.basetm));
         sender->cnfg_optns.intrvl_ns = 1000000;
         sender->cnfg_optns.pubid = 0xAC00;
+        sender->cnfg_optns.prrty = 6;
 
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:i:p:"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:i:p:y:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspc(atof(optarg), &(sender->cnfg_optns.basetm));
@@ -136,6 +139,9 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
                 case 'p':
                         (*sender).cnfg_optns.pubid = atoi(optarg);
                         break;
+                case 'y':
+                        (*sender).cnfg_optns.prrty = atoi(optarg);
+                        break;
                 case 'h':
                 default:
                         usage(appname);
@@ -143,18 +149,29 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
                         break;
                 }
         }
+        if ((sender->cnfg_optns.prrty < 1) || (sender->cnfg_optns.prrty > 7)) {
+                printf("Specified socket priority is out of rage. Must be between 1 and 7.\n");
+                exit(0);
+        }
 }
 
 // open tx socket
-int opntxsckt(void)
+int opntxsckt(int prrty)
 {       
+        int ok;
         struct sock_txtime soctxtm;
         int sckt = socket(AF_PACKET,SOCK_DGRAM,ETHERTYPE);
         if (sckt < 0)
                 return sckt;      //fail
         soctxtm.clockid = CLOCK_TAI;
         soctxtm.flags = 0;
-        setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
+        ok = setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
+        if (ok != 0)
+                printf("Warning: Setting of Socketoption TXTIME failed (TX). Error: %d \n",errno);
+        int prio = prrty;
+        ok = setsockopt(sckt, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(prio));
+        if (ok != 0)
+                printf("Warning: Setting of socket priority failed (TX). Error: %d \n",errno);
         
         return sckt;
 }
@@ -166,7 +183,7 @@ int init(struct tsnsender_t *sender)
         struct sched_param param;
 
         //open send socket
-        sender->txsckt = opntxsckt();
+        sender->txsckt = opntxsckt(sender->cnfg_optns.prrty);
         if (sender->txsckt < 0) {
                 printf("TX Socket open failed. \n");
                 sender->txsckt = 0;

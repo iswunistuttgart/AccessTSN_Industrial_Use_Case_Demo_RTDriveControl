@@ -20,6 +20,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <time.h>
 #include <poll.h>
 #include <linux/net_tstamp.h>
@@ -49,6 +50,7 @@ struct cnfg_optns_t{
         uint8_t num_axs;
         enum axsID_t frst_axs;
         uint16_t pubid;
+        int prrty;
 };
 
 struct tsndrive_t {
@@ -92,6 +94,7 @@ static void usage(char *appname)
                 " -s [nanosec]         Specifies the send window duration, timeinterval between 2 axis-packets in nano seconds.\n"
                 " -i [name]            Name of the Networkinterface to use.\n"
                 " -p                   PublisherID e.g. TalkerID, Default: 0xAC0A\n"
+                " -y                   Priority of sending socket (can be 1-7), Default: 6\n"
                 " -n [value < 5]       Number of simulated axes. Default 4.\n"
                 " -a [index < 4]       Index of the first simulated axis. x = 0, y = 1, z = 2, spindle = 3. Default 0.\n"
                 " -h                   Prints this help message and exits\n"
@@ -110,10 +113,11 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
         cnvrt_dbl2tmspc(0, &(drivesim->cnfg_optns.basetm));
         drivesim->cnfg_optns.intrvl_ns = 1000000;
         drivesim->cnfg_optns.pubid = 0xAC0A;
+        drivesim->cnfg_optns.prrty = 6;
 
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:s:i:n:a:p:"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:s:i:n:a:p:y:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspc(atof(optarg), &(drivesim->cnfg_optns.basetm));
@@ -146,6 +150,9 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
                 case 'p':
                         (*drivesim).cnfg_optns.pubid = atoi(optarg);
                         break;
+                case 'y':
+                        (*drivesim).cnfg_optns.prrty = atoi(optarg);
+                        break;
                 case 'h':
                 default:
                         usage(appname);
@@ -165,18 +172,29 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
                 printf("Combination of Axis index and number of simulation Axis to high!\n");
                 exit(0);   
         }
+        if ((drivesim->cnfg_optns.prrty < 1) || (drivesim->cnfg_optns.prrty > 7)) {
+                printf("Specified socket priority is out of rage. Must be between 1 and 7.\n");
+                exit(0);
+        }
 }
 
 // open tx socket
-int opntxsckt(void)
+int opntxsckt(int prrty)
 {
+        int ok;
         struct sock_txtime soctxtm;
         int sckt = socket(AF_PACKET,SOCK_DGRAM,ETHERTYPE);
         if (sckt < 0)
                 return sckt;      //fail
         soctxtm.clockid = CLOCK_TAI;
         soctxtm.flags = 0;
-        setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
+        ok = setsockopt(sckt,SOL_SOCKET,SO_TXTIME,&soctxtm,sizeof(soctxtm));
+        if (ok != 0)
+                printf("Warning: Setting of Socketoption TXTIME failed (TX). Error: %d \n",errno);
+        int prio = prrty;
+        ok = setsockopt(sckt, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(prio));
+        if (ok != 0)
+                printf("Warning: Setting of socket priority failed (TX). Error: %d \n",errno);
         return sckt;
 }
 
@@ -214,7 +232,7 @@ int init(struct tsndrive_t *drivesim)
         memcpy(drivesim->cnfg_optns.snd_macs[3],mac,ETH_ALEN);
         
         //open send socket
-        drivesim->txsckt = opntxsckt();
+        drivesim->txsckt = opntxsckt(drivesim->cnfg_optns.prrty);
         if (drivesim->txsckt < 0) {
                 printf("TX Socket open failed. \n");
                 drivesim->txsckt = 0;
