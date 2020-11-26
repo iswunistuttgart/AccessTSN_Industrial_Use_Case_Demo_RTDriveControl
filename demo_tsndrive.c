@@ -48,6 +48,7 @@ struct cnfg_optns_t{
         char * snd_macs[4];
         uint8_t num_axs;
         enum axsID_t frst_axs;
+        uint16_t pubid;
 };
 
 struct tsndrive_t {
@@ -90,6 +91,7 @@ static void usage(char *appname)
                 " -w [nanosec]         Specifies the receive window duration, timeinterval in which a packet is expected in nano seconds.\n"
                 " -s [nanosec]         Specifies the send window duration, timeinterval between 2 axis-packets in nano seconds.\n"
                 " -i [name]            Name of the Networkinterface to use.\n"
+                " -p                   PublisherID e.g. TalkerID, Default: 0xAC0A\n"
                 " -n [value < 5]       Number of simulated axes. Default 4.\n"
                 " -a [index < 4]       Index of the first simulated axis. x = 0, y = 1, z = 2, spindle = 3. Default 0.\n"
                 " -h                   Prints this help message and exits\n"
@@ -107,10 +109,11 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
         drivesim->cnfg_optns.num_axs = 4;
         cnvrt_dbl2tmspc(0, &(drivesim->cnfg_optns.basetm));
         drivesim->cnfg_optns.intrvl_ns = 1000000;
+        drivesim->cnfg_optns.pubid = 0xAC0A;
 
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:s:i:n:a:"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:s:i:n:a:p:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspc(atof(optarg), &(drivesim->cnfg_optns.basetm));
@@ -139,6 +142,9 @@ void evalCLI(int argc, char* argv[0],struct tsndrive_t * drivesim)
                         break;
                 case 'a':
                         (*drivesim).cnfg_optns.frst_axs = atoi(optarg);
+                        break;
+                case 'p':
+                        (*drivesim).cnfg_optns.pubid = atoi(optarg);
                         break;
                 case 'h':
                 default:
@@ -418,7 +424,7 @@ int snd_axsmsg(struct tsndrive_t* drivesim, struct sockaddr_ll *snd_addr, struct
                 printf("Could not get free packet for sending. \n");
                 return 1;       //fail
         }
-        ok += setpkt(snd_pkt,1,AXS);
+        ok += setpkt(snd_pkt,1,AXS,drivesim->cnfg_optns.pubid);
         ok += fillaxspkt(snd_pkt,axsnfo,*seqno);
         if (ok != 0){
                 printf("Error in filling sending packet or corresponding headers.\n");

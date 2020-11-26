@@ -148,11 +148,11 @@ void destroypkt(struct rt_pkt_t* pkt);
 /* sets a packet, clears the buffer, sets the pointers according to msgcnt
  * and msgtype, then inits paket headers 
  * Limitation in implementation: Cannot mix messages of mutliple types */
-int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp);
+int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp, uint16_t pubid);
 
 /* sets all standard header values which do not change during the program
  * execution */
-void initpkthdrs(struct rt_pkt_t* pkt);
+void initpkthdrs(struct rt_pkt_t* pkt, uint16_t pubid);
 
 /* fill packet with information from control, packet must already have the
  * correct number of message (1)*/

@@ -46,6 +46,7 @@ struct cnfg_optns_t{
         char * ifname;
         char *rcv_macs[4];
         uint8_t num_rcvmacs;
+        uint16_t pubid;
 };
 
 struct tsnsender_t {
@@ -94,6 +95,7 @@ static void usage(char *appname)
                 " -r [nanosec]         Specifies the receiving offset, time between start of cycle and end of receive slot in nano seconds.\n"
                 " -w [nanosec]         Specifies the receive window duration, timeinterval in which a packet is expected in nano seconds.\n"
                 " -i                   Name of the Networkinterface to use.\n"
+                " -p                   PublisherID e.g. TalkerID, Default: 0xAC00\n"
                 " -h                   Prints this help message and exits\n"
                 "\n",
                 appname);
@@ -106,11 +108,11 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
         //set standard values
         cnvrt_dbl2tmspc(0, &(sender->cnfg_optns.basetm));
         sender->cnfg_optns.intrvl_ns = 1000000;
-
+        sender->cnfg_optns.pubid = 0xAC00;
 
         char* appname = strrchr(argv[0], '/');
         appname = appname ? 1 + appname : argv[0];
-        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:i:"))) {
+        while (EOF != (c = getopt(argc,argv,"ht:b:o:r:w:i:p:"))) {
                 switch(c) {
                 case 'b':
                         cnvrt_dbl2tmspc(atof(optarg), &(sender->cnfg_optns.basetm));
@@ -130,6 +132,9 @@ void evalCLI(int argc, char* argv[0],struct tsnsender_t * sender)
                 case 'i':
                         (*sender).cnfg_optns.ifname = calloc(strlen(optarg),sizeof(char));
                         strcpy((*sender).cnfg_optns.ifname,optarg);
+                        break;
+                case 'p':
+                        (*sender).cnfg_optns.pubid = atoi(optarg);
                         break;
                 case 'h':
                 default:
@@ -363,7 +368,7 @@ void *rt_thrd(void *tsnsender)
                         printf("Could not get free packet for sending. \n");
                         return NULL;       //fail
                 }
-                ok += setpkt(snd_pkt,1,CNTRL);
+                ok += setpkt(snd_pkt,1,CNTRL,sender->cnfg_optns.pubid);
                 
                 ok += fillcntrlpkt(snd_pkt,&snd_cntrlnfo,snd_seqno);
                 if (ok != 0){

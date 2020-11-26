@@ -9,18 +9,18 @@
 #include <errno.h>
 #include <stdio.h>
 
-void initpkthdrs(struct rt_pkt_t* pkt)
+void initpkthdrs(struct rt_pkt_t* pkt, uint16_t pubid)
 {
         pkt->ntwrkmsg_hdr->ver_fl = 0xF1;       //Version = 1; PublishID, GroupHeader, PayloadHdr and ExtendedFlags 1 enables
         pkt->ntwrkmsg_hdr->extfl = 0x21;        //pubishID datatype Uint16; Timestamp enabled
-        //TODO pkt.ntwrkmsg_hdr->pubId;
-        // grp_hdr_t
+        pkt->ntwrkmsg_hdr->pubId = htons(pubid);
+        
         pkt->grp_hdr->grpfl = 0x0B;             //writergroupID, groupVersion and Sequencenumber enabled
         pkt->grp_hdr->wgrpId = htons(WGRPID);
         pkt->grp_hdr->grpVer = htonl(GRPVER);
 }
 
-int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
+int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp, uint16_t pubid)
 {
         uint16_t dtstmsgsz = 0;
         int msgfldsz;
@@ -74,7 +74,7 @@ int setpkt(struct rt_pkt_t* pkt, int msgcnt, enum msgtyp_t msgtyp)
                 *(&(pkt->szrry->size) + i) = htons(dtstmsgsz);
                 i++;
         }    
-        initpkthdrs(pkt);
+        initpkthdrs(pkt,pubid);
         
         return 0;       //succeded
 }
@@ -458,7 +458,8 @@ int prsdtstmsg(struct rt_pkt_t* pkt, enum msgtyp_t pkttyp, union dtstmsg_t *dtst
 
 int prsaxsmsg(union dtstmsg_t *dtstmsg, struct axsnfo_t * axsnfo)
 {
-        //TODO check Datasetflags
+        if(dtstmsg->dtstmsg_axs.dtstmsg_hdr != 0x01)
+                return 1;       //fail
         if(dtstmsg->dtstmsg_axs.fldcnt != ntohs(2))    //identifier if truly axis-dataset-message
                 return 1;       //fail
         axsnfo->cntrlsw = (bool) dtstmsg->dtstmsg_axs.fault;
@@ -469,8 +470,9 @@ int prsaxsmsg(union dtstmsg_t *dtstmsg, struct axsnfo_t * axsnfo)
 
 int prscntrlmsg(union dtstmsg_t *dtstmsg, struct cntrlnfo_t * cntrlnfo)
 {
-        //TODO check Datasetflags
-        if(dtstmsg->dtstmsg_axs.fldcnt != ntohs(11))    //identifier if truly axis-dataset-message
+        if(dtstmsg->dtstmsg_cntrl.dtstmsg_hdr != 0x01)
+                return 1;       //fail
+        if(dtstmsg->dtstmsg_cntrl.fldcnt != ntohs(11))    //identifier if truly control-dataset-message
                 return 1;       //fail
         cntrlnfo->x_set.cntrlvl = nint642dbl(be64toh(dtstmsg->dtstmsg_cntrl.xvel_set));
         cntrlnfo->x_set.cntrlsw = (bool) dtstmsg->dtstmsg_cntrl.xenable;
