@@ -593,9 +593,9 @@ int main(int argc, char* argv[])
  
         /* Join the thread and wait until it is done */
 	int ret;
-        ret = pthread_join((drivesim.rt_thrd), NULL);
-        if (ret)
-                printf("join pthread failed: %d\n",ret);
+        //ret = pthread_join((drivesim.rt_thrd), NULL);
+        //if (ret)
+        //        printf("join pthread failed: %d\n",ret);
         
 
         //OPTIONAL: start pmc-thread
