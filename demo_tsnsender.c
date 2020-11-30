@@ -27,12 +27,12 @@
 #include "axisshm_handler.h"
 
 
-//parameters whcih are fixed at compile time, all values in nano seconds
-#define SENDINGSTACK_DURATION 100000 
-#define RECEIVINGSTACK_DURATION 100000
-#define APPSENDWAKEUP 100000
-#define APPRECVWAKEUP 100000
-#define MAXWAKEUPJITTER 40000
+//parameters which are fixed at compile time, all values in nano seconds; values should be estimated using cyclictest
+#define SENDINGSTACK_DURATION 200000    //Duration between sending packet to stack and packet leaving the NIC
+#define RECEIVINGSTACK_DURATION 200000  //Duration between receiving packet in NIC and getting packet from stack
+#define APPSENDWAKEUP 200000            //Duration between wakeup of the thread and the packet being read to send
+#define APPRECVWAKEUP 200000            //Duration between wakeup of the thread and it being ready to receive
+#define MAXWAKEUPJITTER 50000           //worst case Jitter between planned and actual wakeup of thread
 
 uint8_t run = 1;
 
@@ -594,7 +594,7 @@ int main(int argc, char* argv[])
 	int ret;
         ret = pthread_join((sender.rx_thrd), NULL);
         if (ret)
-                printf("join pthread failed: %m\n");
+                printf("join pthread failed: %d\n",ret);
         
 
         //OPTIONAL: start pmc-thread

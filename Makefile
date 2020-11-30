@@ -17,9 +17,10 @@ _OBJ = packet_handler.o axisshm_handler.o time_calc.o axis_sim.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.c 
+	@mkdir -p $(ODIR)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-all: demo_tsnsender
+all: demo_tsnsender demo_tsndrive
 
 demo_tsnsender: demo_tsnsender.c obj/packet_handler.o obj/axisshm_handler.o obj/time_calc.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
@@ -39,4 +40,4 @@ drive_test: tests/demo_drive_test.c obj/axis_sim.o obj/time_calc.o obj/axisshm_h
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core demoapps_common/*~ demo_tsnsender demo_tsndrive tests/recv_test tests7drive_test
+	rm -f $(ODIR)/*.o *~ core demoapps_common/*~ demo_tsnsender demo_tsndrive recv_test posupdate_test drive_test
