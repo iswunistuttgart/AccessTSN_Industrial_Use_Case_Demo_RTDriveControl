@@ -6,10 +6,10 @@
 
 /*
  * This uses OPC UA Networkmessages to communicate the variables and values.
- * Each variable is decoded into a "DataSetMessage" with two fields. The first
- * field is the variable-ID [4 Byte] and the second field is the value [8 byte].
- * A Networkmessage can contain multiple DataSrtMessages and therefore multiple
- * variables. The variable-ID is defined in this document.
+ * Two "DataSetMessages" are defined. One for control information which is send
+ * from the CNC control to thr drives. The other DataSetMessage is defined for
+ * axis information which are transmitted from the drives to the CNC control.
+ * Both messages contain multiple variables. 
  */
 
 #ifndef _PACKETHANDLER_H_
@@ -32,7 +32,6 @@
 
 #define WGRPID 0x1000
 #define GRPVER 0x26DEFA00       //seconds since Jan 1,2000, creation Sept 1,2020
-#define MAXPKTSZ 1500 
 
 #define WRITERID_CNTRL 0xAC00
 #define WRITERID_AXX 0xAC01
@@ -47,6 +46,8 @@
 #define DSTADDRAXSS  "01:AC:CE:55:00:04"     //Ethernet Multicast-Address the Spindle should sent to
 
 #define ETHERTYPE 0xB62C        //Ethertype for OPC UA UADP NetworkMessages over Ethernet II
+
+#define MAXPKTSZ 1500 
 
 /* static defines */
 #define DBLOVERFLOW INT64_MAX*1e-9
@@ -226,7 +227,7 @@ struct pktstore_t {
         uint32_t size;
 };
 
-/* allocates necaessary memory for Packetstorage, elements and packets */
+/* allocates necessary memory for Packetstorage, elements and packets */
 int initpktstrg(struct pktstore_t *pktstore, uint32_t size);
 
 /* frees all packets and frees memory from packetstoreage, regardless if packets

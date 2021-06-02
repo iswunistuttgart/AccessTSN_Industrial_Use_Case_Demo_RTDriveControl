@@ -223,7 +223,7 @@ int rd_shm2addcntrlinfo(struct mk_additionaloutput* mk_addout, struct cntrlnfo_t
 
 int clscntrlShM(struct mk_mainoutput** mk_mainout, sem_t** sem)
 {
-        //not unlinking shared memroy because for rhe control SHm this is only reader
+        //not unlinking shared memroy because for the control SHm this is only reader
         int ok;
         ok = munmap(*mk_mainout,sizeof(struct mk_mainoutput));
         if (ok < 0)
@@ -238,7 +238,7 @@ int clscntrlShM(struct mk_mainoutput** mk_mainout, sem_t** sem)
 
 int clsaddcntrlShM(struct mk_additionaloutput** mk_addout, sem_t** sem)
 {
-        //not unlinking shared memroy because for rhe control SHm this is only reader
+        //not unlinking shared memroy because for the control SHm this is only reader
         int ok;
         ok = munmap(*mk_addout,sizeof(struct mk_additionaloutput));
         if (ok < 0)

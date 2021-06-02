@@ -11,7 +11,7 @@ uint64_t cnvrt_tmspc2uatm(struct timespec orgtm)
         uint64_t newtm;
         newtm = OPC_EPOCH_DIFF;
         newtm += orgtm.tv_sec;
-        newtm *= NSEC_IN_SEC;
+        newtm *= (NSEC_IN_SEC/100);
         newtm += orgtm.tv_nsec / 100;
 
         return newtm;
@@ -22,12 +22,12 @@ struct timespec cnvrt_uatm2tmspc(uint64_t orgtm)
         struct timespec newtm;
         uint64_t sec;
         uint32_t nsec;
-        sec = orgtm/NSEC_IN_SEC - OPC_EPOCH_DIFF;
+        sec = orgtm/(NSEC_IN_SEC/100) - OPC_EPOCH_DIFF;
         newtm.tv_sec = (time_t)sec;
         if(sec != newtm.tv_sec) //overflow check
                 newtm.tv_sec = (time_t) -1;
-        nsec = orgtm%NSEC_IN_SEC * 100;
-        newtm.tv_nsec = nsec;
+        nsec = orgtm%(NSEC_IN_SEC/100);
+        newtm.tv_nsec = nsec *100;
 
         return newtm;
 }

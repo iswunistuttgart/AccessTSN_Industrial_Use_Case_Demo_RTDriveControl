@@ -7,7 +7,12 @@
 /*
  * This specifies some helper functions to convert time between the OPC UA time
  * format and the timespec format. This is used to convert the timestamps used
- * in the OPC UA network messages.
+ * in the OPC UA network messages. Also functions are included to handle the
+ * timespec format and to calculate timing variables required during execution.
+ * The OPC UA "DateTime (Clause 5.2.2.5) value shall be encoded as a 64-bit 
+ * signed integer (Clause 5.2.2.2.) which represents the number of 100 nano-
+ * second intervals since January 1st 1601 (UTC)."
+ * Linux time represents the number of seconds since January 1st 1970 (UTC).
  */
 
 #ifndef _TIME_CALC_H_

@@ -181,7 +181,7 @@ void axs_ststrtup(struct axis_t* axs, double start_pos)
         strtpos = start_pos;
         if (start_pos > axs->max_pos)
                 strtpos = axs->max_pos;
-        if (start_pos < 0)
-                strtpos = 0;
+        if (start_pos < -axs->max_pos)
+                strtpos = -axs->max_pos;
         axs->cur_pos = strtpos;
 }

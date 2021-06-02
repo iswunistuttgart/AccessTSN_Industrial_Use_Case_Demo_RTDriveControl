@@ -299,7 +299,7 @@ int opnrxsckt(char *ifnm, char *mac_addrs[], int no_macs)
         pkt_mr.mr_ifindex = ifopts.ifr_ifindex;
         pkt_mr.mr_type = PACKET_MR_MULTICAST;
         pkt_mr.mr_alen = ETH_ALEN;
-        char * test;
+        
         for (int i = 0; i < no_macs; i++) {
                 memcpy(pkt_mr.mr_address, mac_addrs[i],ETH_ALEN);
                 if (setsockopt(rxsckt, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &pkt_mr,sizeof(struct packet_mreq)) < 0) {
@@ -381,7 +381,7 @@ int prspkt(struct rt_pkt_t* pkt, enum msgtyp_t *pkttyp)
         msgcnt = pkt->pyld_hdr->msgcnt;
         pkt->extntwrkmsg_hdr = (struct extntwrkmsg_hdr_t*) ((char *) pkt->pyld_hdr + sizeof(pkt->pyld_hdr->msgcnt) + msgcnt*sizeof(pkt->pyld_hdr->wrtrId));
         if (msgcnt < 2){
-                //for msgcnt = 1, sizearray is ommitted
+                //for msgcnt = 1, sizearray is omitted
                 pkt->szrry = NULL;
                 msgfldsz = 0;
                 if (pkt->len == ETH_ZLEN){
